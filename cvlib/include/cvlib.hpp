@@ -24,6 +24,34 @@ void split_and_merge(const cv::Mat& image, cv::Mat& splitImage, cv::Mat& mergeIm
 /// \param eps, in - threshold parameter for texture's descriptor distance
 /// \return binary mask with selected texture
 cv::Mat select_texture(const cv::Mat& image, const cv::Rect& roi, double eps);
+
+/// \brief Motion Segmentation algorithm
+class motion_segmentation : public cv::BackgroundSubtractor
+{
+    public:
+    /// \brief ctor
+    motion_segmentation();
+
+    void setThreshold(double threshold);
+
+    /// \see cv::BackgroundSubtractor::apply
+    void apply(cv::InputArray image, cv::OutputArray foregroundMask, double learningRate) override;
+
+    /// \see cv::BackgroundSubtractor::BackgroundSubtractor
+    void getBackgroundImage(cv::OutputArray backgroundImage) const override;
+
+    private:
+    bool m_isInitialized;
+    double m_threshold;
+    cv::Mat m_grayImage;
+    cv::Mat m_mu;
+    cv::Mat m_muTmp;
+    cv::Mat m_sigma;
+    cv::Mat m_sigmaQuad;
+    cv::Mat m_sigmaQuadTmp;
+    cv::Mat m_distance;
+    cv::Mat m_foregroundMask;
+};
 } // namespace cvlib
 
 #endif // __CVLIB_HPP__
