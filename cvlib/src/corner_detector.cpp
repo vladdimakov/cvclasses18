@@ -17,6 +17,5 @@ cv::Ptr<corner_detector_fast> corner_detector_fast::create()
 void corner_detector_fast::detect(cv::InputArray image, CV_OUT std::vector<cv::KeyPoint>& keypoints, cv::InputArray /*mask = cv::noArray()*/)
 {
     keypoints.clear();
-    // \todo implement FAST with minimal LOCs(lines of code), but keep code readable.
 }
 } // namespace cvlib
