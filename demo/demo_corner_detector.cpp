@@ -9,6 +9,15 @@
 
 #include "utils.hpp"
 
+namespace
+{
+void on_trackbar(int threshold, void* obj)
+{
+    cvlib::corner_detector_fast* detector = (cvlib::corner_detector_fast*)obj;
+    detector->setThreshold(threshold);
+}
+}; // namespace
+
 int demo_corner_detector(int argc, char* argv[])
 {
     cv::VideoCapture cap(0);
@@ -24,6 +33,10 @@ int demo_corner_detector(int argc, char* argv[])
     cv::Mat frame;
     auto detector = cvlib::corner_detector_fast::create();
     std::vector<cv::KeyPoint> corners;
+
+    int threshold = 30;
+    cv::createTrackbar("Threshold", demo_wnd, &threshold, 255, on_trackbar, (void*)detector);
+    detector->setThreshold(threshold);
 
     utils::fps_counter fps;
     while (cv::waitKey(30) != 27) // ESC

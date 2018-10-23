@@ -59,9 +59,18 @@ class corner_detector_fast : public cv::Feature2D
     public:
     /// \brief Fabrique method for creating FAST detector
     static cv::Ptr<corner_detector_fast> create();
-
     /// \see Feature2d::detect
     virtual void detect(cv::InputArray image, CV_OUT std::vector<cv::KeyPoint>& keypoints, cv::InputArray mask = cv::noArray()) override;
+    void setThreshold(int threshold);
+
+    private:
+    inline bool isCorner(const cv::Point2i& point, int step, int pointNumThreshold);
+    cv::Mat m_image;
+    int m_threshold = 30;
+    const cv::Point2i m_template[16] = {cv::Point2i(0, -3), cv::Point2i(1, -3),  cv::Point2i(2, -2),  cv::Point2i(3, -1),
+                                        cv::Point2i(3, 0),  cv::Point2i(3, 1),   cv::Point2i(2, 2),   cv::Point2i(1, 3),
+                                        cv::Point2i(0, 3),  cv::Point2i(-1, 3),  cv::Point2i(-2, 2),  cv::Point2i(-3, 1),
+                                        cv::Point2i(-3, 0), cv::Point2i(-3, -1), cv::Point2i(-2, -2), cv::Point2i(-1, -3)};
 };
 } // namespace cvlib
 

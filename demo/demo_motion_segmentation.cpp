@@ -7,11 +7,14 @@
 #include <cvlib.hpp>
 #include <opencv2/opencv.hpp>
 
+namespace
+{
 void on_trackbar(int threshold, void* obj)
 {
     cvlib::motion_segmentation* mseg = (cvlib::motion_segmentation*)obj;
     mseg->setThreshold(threshold / 10.0);
 }
+}; // namespace
 
 int demo_motion_segmentation(int argc, char* argv[])
 {
