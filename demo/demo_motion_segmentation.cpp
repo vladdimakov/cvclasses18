@@ -7,11 +7,14 @@
 #include <cvlib.hpp>
 #include <opencv2/opencv.hpp>
 
+namespace
+{
 void on_trackbar(int threshold, void* obj)
 {
-	cvlib::motion_segmentation* mseg = (cvlib::motion_segmentation*)obj;
-	mseg->setThreshold(threshold / 10.0);
+    cvlib::motion_segmentation* mseg = (cvlib::motion_segmentation*)obj;
+    mseg->setThreshold(threshold / 10.0);
 }
+}; // namespace
 
 int demo_motion_segmentation(int argc, char* argv[])
 {
@@ -20,10 +23,10 @@ int demo_motion_segmentation(int argc, char* argv[])
         return -1;
 
     cvlib::motion_segmentation* mseg = new cvlib::motion_segmentation();
-    const auto main_wnd = "main";
+    const auto main_wnd = "origin";
     const auto demo_wnd = "demo";
 
-    int threshold = 25;
+    int threshold = 30;
     int learningRate = 10;
 
     cv::namedWindow(main_wnd);
@@ -31,13 +34,14 @@ int demo_motion_segmentation(int argc, char* argv[])
     cv::createTrackbar("T (10^-1)", demo_wnd, &threshold, 100, on_trackbar, (void*)mseg);
     cv::createTrackbar("R (10^-4)", demo_wnd, &learningRate, 1000);
 
+    mseg->setThreshold(threshold / 10.0);
+
     cv::Mat frame;
     cv::Mat frame_mseg;
     while (cv::waitKey(30) != 27) // ESC
     {
         cap >> frame;
         cv::imshow(main_wnd, frame);
-
         mseg->apply(frame, frame_mseg, learningRate / 10000.0);
 
         if (!frame_mseg.empty())
