@@ -6,6 +6,8 @@
 
 #include "cvlib.hpp"
 
+#include <ctime>
+
 namespace cvlib
 {
 // static
@@ -51,5 +53,35 @@ void corner_detector_fast::detect(cv::InputArray image, CV_OUT std::vector<cv::K
         for (point.x = 3; point.x < m_image.cols - 3; point.x++)
             if (isCorner(point, 4, 3) && isCorner(point, 1, 9))
                 keypoints.push_back(cv::KeyPoint(point, 1.f));
+}
+
+void corner_detector_fast::compute(cv::InputArray, std::vector<cv::KeyPoint>& keypoints, cv::OutputArray descriptors)
+{
+    std::srand(unsigned(std::time(0))); // \todo remove me
+    // \todo implement any binary descriptor
+    const int desc_length = 2;
+    descriptors.create(static_cast<int>(keypoints.size()), desc_length, CV_32S);
+    auto desc_mat = descriptors.getMat();
+    desc_mat.setTo(0);
+
+    int* ptr = reinterpret_cast<int*>(desc_mat.ptr());
+    for (const auto& pt : keypoints)
+    {
+        for (int i = 0; i < desc_length; ++i)
+        {
+            *ptr = std::rand();
+            ++ptr;
+        }
+    }
+}
+
+void corner_detector_fast::detectAndCompute(cv::InputArray, cv::InputArray, std::vector<cv::KeyPoint>&, cv::OutputArray descriptors, bool /*= false*/)
+{
+    // \todo implement me
+}
+
+cv::String corner_detector_fast::getDefaultName() const
+{
+    return "FAST_Binary";
 }
 } // namespace cvlib
