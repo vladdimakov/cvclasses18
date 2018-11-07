@@ -9,6 +9,15 @@
 
 #include "utils.hpp"
 
+namespace
+{
+void on_trackbar(int threshold, void* obj)
+{
+    cvlib::corner_detector_fast* detector = (cvlib::corner_detector_fast*)obj;
+    detector->setThreshold(threshold);
+}
+}; // namespace
+
 int demo_feature_descriptor(int argc, char* argv[])
 {
     cv::VideoCapture cap(0);
@@ -27,6 +36,10 @@ int demo_feature_descriptor(int argc, char* argv[])
     std::vector<cv::KeyPoint> corners;
     cv::Mat descriptors;
 
+    int threshold = 30;
+    cv::createTrackbar("Threshold", demo_wnd, &threshold, 255, on_trackbar, (void*)detector_a);
+    detector_a->setThreshold(threshold);
+
     utils::fps_counter fps;
     int pressed_key = 0;
     while (pressed_key != 27) // ESC
@@ -34,15 +47,15 @@ int demo_feature_descriptor(int argc, char* argv[])
         cap >> frame;
         cv::imshow(main_wnd, frame);
 
-        detector_b->detect(frame, corners); // \todo use your detector (detector_b)
+        detector_a->detect(frame, corners);
         cv::drawKeypoints(frame, corners, frame, cv::Scalar(0, 0, 255));
 
         utils::put_fps_text(frame, fps);
-        // \todo add count of the detected corners at the top left corner of the image. Use green text color.
+        cv::putText(frame, std::to_string(corners.size()), cv::Point(10, 20), CV_FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0));
         cv::imshow(demo_wnd, frame);
 
         pressed_key = cv::waitKey(30);
-        if (pressed_key == ' ') // space
+        /*if (pressed_key == ' ') // space
         {
             cv::FileStorage file("descriptor.json", cv::FileStorage::WRITE | cv::FileStorage::FORMAT_JSON);
 
@@ -53,9 +66,7 @@ int demo_feature_descriptor(int argc, char* argv[])
             file << "detector_b" << descriptors;
 
             std::cout << "Dump descriptors complete! \n";
-        }
-
-        std::cout << "Feature points: " << corners.size() << "\r";
+        }*/
     }
 
     cv::destroyWindow(main_wnd);
