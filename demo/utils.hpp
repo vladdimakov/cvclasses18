@@ -53,6 +53,8 @@ struct fps_counter
 /// \param fps, in/out - fps_counter which is used for tracking processed frames
 /// \param color, in - the color of text
 void put_fps_text(cv::Mat& image, fps_counter& fps, cv::Scalar color = {255, 0, 0});
+
+void showHist(std::string histName, cv::Mat bins, int width, int height);
 } // namespace utils
 
 #endif // __UTILS_HPP__
