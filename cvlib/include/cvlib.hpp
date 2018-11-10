@@ -57,6 +57,8 @@ class motion_segmentation : public cv::BackgroundSubtractor
 class corner_detector_fast : public cv::Feature2D
 {
     public:
+    corner_detector_fast();
+
     /// \brief Fabrique method for creating FAST detector
     static cv::Ptr<corner_detector_fast> create();
 
@@ -76,13 +78,22 @@ class corner_detector_fast : public cv::Feature2D
     virtual cv::String getDefaultName() const override;
 
     private:
-    inline bool isCorner(const cv::Point2i& point, int step, int pointNumThreshold);
-    cv::Mat m_image;
+    bool isCorner(const cv::Point2i& point, int step, int pointNumThreshold);
+    void generateTestPoints();
+    void calcDescriptor(const cv::Point2i& keypoint, cv::Mat& descriptor);
+
+    cv::Mat m_imageForDetector;
     int m_threshold = 30;
     const cv::Point2i m_template[16] = {cv::Point2i(0, -3), cv::Point2i(1, -3),  cv::Point2i(2, -2),  cv::Point2i(3, -1),
                                         cv::Point2i(3, 0),  cv::Point2i(3, 1),   cv::Point2i(2, 2),   cv::Point2i(1, 3),
                                         cv::Point2i(0, 3),  cv::Point2i(-1, 3),  cv::Point2i(-2, 2),  cv::Point2i(-3, 1),
                                         cv::Point2i(-3, 0), cv::Point2i(-3, -1), cv::Point2i(-2, -2), cv::Point2i(-1, -3)};
+    cv::Mat m_imageForDescriptor;
+    int m_testAreaSize;
+    int m_testPointsNum;
+    int m_descriptorBytesNum;
+    double m_sigma;
+    std::vector<std::pair<cv::Point2i, cv::Point2i>> m_testPoints;
 };
 } // namespace cvlib
 

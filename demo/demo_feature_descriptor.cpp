@@ -4,10 +4,9 @@
  * @author Anonymous
  */
 
+#include "utils.hpp"
 #include <cvlib.hpp>
 #include <opencv2/opencv.hpp>
-
-#include "utils.hpp"
 
 namespace
 {
