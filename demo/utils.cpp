@@ -72,4 +72,22 @@ void put_fps_text(cv::Mat& image, fps_counter& fps, cv::Scalar color /*= (255, 0
 
     cv::putText(image, ss.str(), textOrgPoint, txtFont, fontScale, color, thickness, 8, false);
 }
+
+void showHist(std::string histName, cv::Mat bins, int width, int height)
+{
+    int histSize = bins.rows + 1;
+    int binWidth = cvRound((double)width / histSize);
+
+    cv::Mat histImage(height, width, CV_8U, cv::Scalar(0));
+
+    cv::normalize(bins, bins, 0, histImage.rows, cv::NORM_MINMAX, -1, cv::Mat());
+
+    for (int i = 1; i < histSize; i++)
+    {
+        cv::rectangle(histImage, cv::Point2i(binWidth * (i - 1), height), cv::Point2i(binWidth * i, height - cvRound(bins.at<float>(i - 1))),
+                      cv::Scalar(255), -1);
+    }
+
+    cv::imshow(histName, histImage);
+}
 } // namespace utils
