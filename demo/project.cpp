@@ -34,7 +34,9 @@ int project_demo(int argc, char* argv[])
 	float refreshRate = 0.02f;
 	float deviationFactor = 5.5f;
 	float targetsFactor = 15.0f;
-	cvlib::Detector detector(refreshRate, deviationFactor, targetsFactor);
+	int maxCornersNum = 64;
+	int minCornersNum = 16;
+	cvlib::Detector detector(refreshRate, deviationFactor, targetsFactor, maxCornersNum, minCornersNum);
 
 	cv::Mat frame, deviationImage, backgroundImage, binaryImage;
 

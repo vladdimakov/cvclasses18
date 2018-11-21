@@ -99,7 +99,7 @@ class corner_detector_fast : public cv::Feature2D
 class Detector
 {
 public:
-	Detector(float refreshRate, float deviationFactor, float targetsFactor);
+	Detector(float refreshRate, float deviationFactor, float targetsFactor, int maxCornersNum, int minCornersNum);
 	void setNeedToInit(bool needToInit);
 	void process(const cv::Mat &frame);
 	void getDeviationImage(cv::Mat &deviationImage);
@@ -122,6 +122,8 @@ private:
 	float m_refreshRate;
 	float m_deviationFactor;
 	float m_targetsFactor;
+	int m_maxCornersNum;
+	int m_minCornersNum;
 
 	cv::Mat m_frameStaticPartMask, m_averageBackImg, m_deviationImg, m_targetsBinaryFrame;
 	bool m_needToInit;

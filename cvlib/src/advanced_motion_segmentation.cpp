@@ -2,19 +2,10 @@
 
 namespace cvlib
 {
-	const int CAP_FRAME_WIDTH = 1280;
-	const int CAP_FRAME_HEIGHT = 960;
-
-	const int MAX_CORNERS_NUM = 64;
-	const int MIN_CORNERS_NUM = 16;
-
-	Detector::Detector(float refreshRate, float deviationFactor, float targetsFactor)
+	Detector::Detector(float refreshRate, float deviationFactor, float targetsFactor, int maxCornersNum, int minCornersNum) :
+		m_refreshRate(refreshRate), m_deviationFactor(deviationFactor), m_targetsFactor(targetsFactor), m_maxCornersNum(maxCornersNum),	m_minCornersNum(minCornersNum)
 	{
 		m_needToInit = true;
-
-		m_refreshRate = refreshRate;
-		m_deviationFactor = deviationFactor;
-		m_targetsFactor = targetsFactor;
 		m_deviationImgFillValue = 256.0f / targetsFactor;
 	}
 	
@@ -68,30 +59,30 @@ namespace cvlib
 
 		if (intOffset.x != 0 || intOffset.y != 0)
 		{
-			int xOld[2] = { 0, CAP_FRAME_WIDTH };
-			int yOld[2] = { 0, CAP_FRAME_HEIGHT };
-			int xNew[2] = { 0, CAP_FRAME_WIDTH };
-			int yNew[2] = { 0, CAP_FRAME_HEIGHT };
+			int xOld[2] = { 0, inputFrame.size().width };
+			int yOld[2] = { 0, inputFrame.size().height };
+			int xNew[2] = { 0, inputFrame.size().width };
+			int yNew[2] = { 0, inputFrame.size().height };
 
 			if (intOffset.x > 0)
 			{
 				xOld[0] = intOffset.x;
-				xNew[1] = CAP_FRAME_WIDTH - intOffset.x;
+				xNew[1] = inputFrame.size().width - intOffset.x;
 			}
 			else if (intOffset.x < 0)
 			{
-				xOld[1] = CAP_FRAME_WIDTH + intOffset.x;
+				xOld[1] = inputFrame.size().width + intOffset.x;
 				xNew[0] = -intOffset.x;
 			}
 
 			if (intOffset.y > 0)
 			{
 				yOld[0] = intOffset.y;
-				yNew[1] = CAP_FRAME_HEIGHT - intOffset.y;
+				yNew[1] = inputFrame.size().height - intOffset.y;
 			}
 			else if (intOffset.y < 0)
 			{
-				yOld[1] = CAP_FRAME_HEIGHT + intOffset.y;
+				yOld[1] = inputFrame.size().height + intOffset.y;
 				yNew[0] = -intOffset.y;
 			}
 
@@ -111,10 +102,10 @@ namespace cvlib
 		cv::Mat outputFrame;
 		cv::Point2f center;
 
-		center.x = (float)CAP_FRAME_WIDTH / 2 - 0.5f + subPixOffset.x;
-		center.y = (float)CAP_FRAME_HEIGHT / 2 - 0.5f + subPixOffset.y;
+		center.x = (float)inputFrame.size().width / 2 - 0.5f + subPixOffset.x;
+		center.y = (float)inputFrame.size().height / 2 - 0.5f + subPixOffset.y;
 
-		getRectSubPix(inputFrame, cv::Size(CAP_FRAME_WIDTH, CAP_FRAME_HEIGHT), center, outputFrame);
+		getRectSubPix(inputFrame, inputFrame.size(), center, outputFrame);
 
 		return outputFrame;
 	}
@@ -171,10 +162,10 @@ namespace cvlib
 	{
 		m_prevGrayFrame.convertTo(m_averageBackImg, CV_32F);
 
-		m_deviationImg = cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_32F, cv::Scalar(m_deviationImgFillValue));
+		m_deviationImg = cv::Mat(m_averageBackImg.size(), CV_32F, cv::Scalar(m_deviationImgFillValue));
 	
 		m_prevPoints.clear();
-		goodFeaturesToTrack(m_prevGrayFrame, m_prevPoints, MAX_CORNERS_NUM, 0.25, 10, cv::Mat(), 3, false, 0.04);
+		goodFeaturesToTrack(m_prevGrayFrame, m_prevPoints, m_maxCornersNum, 0.25, 10, cv::Mat(), 3, false, 0.04);
 	}
 
 	cv::Point2f Detector::calcFrameOffset(cv::Mat& currentGrayFrame)
@@ -205,7 +196,7 @@ namespace cvlib
 		m_currentPoints.resize(k);
 		m_prevPoints.resize(k);
 
-		if (m_currentPoints.size() < MIN_CORNERS_NUM)
+		if (m_currentPoints.size() < m_minCornersNum)
 			m_needToInit = true;
 
 		frameOffset = findOffsetMedian(m_prevPoints, m_currentPoints);
@@ -223,7 +214,7 @@ namespace cvlib
 		currentFrame.copyTo(translatedAverageBackImg);
 		translateFrame(m_averageBackImg, translatedAverageBackImg, currentOffset);
 
-		translatedDeviationImg = cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_32F, cv::Scalar(m_deviationImgFillValue));
+		translatedDeviationImg = cv::Mat(currentFrame.size(), CV_32F, cv::Scalar(m_deviationImgFillValue));
 		translateFrame(m_deviationImg, translatedDeviationImg, currentOffset);
 
 		translatedAverageBackImg.copyTo(m_averageBackImg);
@@ -289,7 +280,7 @@ namespace cvlib
 
 	void Detector::calcTargetsBinaryFrame(cv::Mat currentFrame, float targetsFactor)
 	{
-		cv::Mat backgroundBoundMask = cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_8U, cv::Scalar(255));
+		cv::Mat backgroundBoundMask = cv::Mat(currentFrame.size(), CV_8U, cv::Scalar(255));
 
 		m_currentDeviationImg = abs(currentFrame - m_averageBackImg);
 
@@ -299,11 +290,11 @@ namespace cvlib
 		m_currentDeviationImg.convertTo(m_currentDeviationImg, CV_8U);
 		int backgroundBound = getBackgroundBoundOpenCV(m_currentDeviationImg);
 
-		cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_8U, cv::Scalar(0)).copyTo(backgroundBoundMask, m_currentDeviationImg - backgroundBound);
-		cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_8U, cv::Scalar(255)).copyTo(m_frameStaticPartMask, backgroundBoundMask);
+		cv::Mat(currentFrame.size(), CV_8U, cv::Scalar(0)).copyTo(backgroundBoundMask, m_currentDeviationImg - backgroundBound);
+		cv::Mat(currentFrame.size(), CV_8U, cv::Scalar(255)).copyTo(m_frameStaticPartMask, backgroundBoundMask);
 
 		m_targetsBinaryFrame.setTo(cv::Scalar(255));
-		cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_8U, cv::Scalar(0)).copyTo(m_targetsBinaryFrame, m_frameStaticPartMask);
+		cv::Mat(currentFrame.size(), CV_8U, cv::Scalar(0)).copyTo(m_targetsBinaryFrame, m_frameStaticPartMask);
 	}
 
 	void Detector::setNeedToInit(bool needToInit)
