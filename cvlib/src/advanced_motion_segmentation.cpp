@@ -314,5 +314,23 @@ namespace cvlib
 		targetsBinaryFrame.setTo(cv::Scalar(255));
 		cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_8U, cv::Scalar(0)).copyTo(targetsBinaryFrame, frameStaticPartMask);
 	}
+
+	void Detector::getDeviationImage(cv::Mat &deviationImage)
+	{
+		deviationImage = this->deviationImg * 20;
+		deviationImage.convertTo(deviationImage, CV_8U);
+	}
+
+	void Detector::getBackgroundImage(cv::Mat &backgroundImage)
+	{
+		averageBackImg.convertTo(backgroundImage, CV_8U);
+	}
+
+	void Detector::getBinaryImage(cv::Mat &binaryImage)
+	{
+		targetsBinaryFrame.assignTo(binaryImage);
+	}
+
+
 	
 }

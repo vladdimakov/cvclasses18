@@ -113,7 +113,11 @@ public:
 	void calcAverageBackAndDeviationImg(cv::Mat currentFrame, float refreshRate);
 	int getBackgroundBoundOpenCV(cv::Mat frame);
 	void calcTargetsBinaryFrame(cv::Mat currentFrame, float targetsFactor);
-
+	
+	void getDeviationImage(cv::Mat &deviationImage);
+	void getBackgroundImage(cv::Mat &backgroundImage);
+	void getBinaryImage(cv::Mat &binaryImage);
+	
 	cv::Mat frameStaticPartMask, averageBackImg, deviationImg, targetsBinaryFrame;
 	bool needToInit;
 	float deviationImgFillValue;

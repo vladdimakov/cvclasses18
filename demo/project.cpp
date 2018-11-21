@@ -27,20 +27,26 @@ int project_demo(int argc, char* argv[])
 	if (!cap.isOpened())
 		return -1;
 
-	const auto origin_wnd = "origin";
-	const auto demo_wnd = "demo";
+	const auto origin_wnd = "Origin";
+	const auto deviation_image_wnd = "Deviation image";
+	const auto background_image_wnd = "Background image";
+	const auto binary_image_wnd = "Binary image";
 
 	const auto wnd_width = 640;
 	const auto wnd_height = 480;
 	
 	cv::namedWindow(origin_wnd, CV_WINDOW_NORMAL);
-	cv::namedWindow(demo_wnd, CV_WINDOW_NORMAL);
+	cv::namedWindow(deviation_image_wnd, CV_WINDOW_NORMAL);
+	cv::namedWindow(background_image_wnd, CV_WINDOW_NORMAL);
+	cv::namedWindow(binary_image_wnd, CV_WINDOW_NORMAL);
 
 	cv::resizeWindow(origin_wnd, wnd_width, wnd_height);
-	cv::resizeWindow(demo_wnd, wnd_width, wnd_height);
+	cv::resizeWindow(deviation_image_wnd, wnd_width, wnd_height);
+	cv::resizeWindow(background_image_wnd, wnd_width, wnd_height);
+	cv::resizeWindow(binary_image_wnd, wnd_width, wnd_height);
 	
 	cvlib::Detector detector;
-	cv::Mat frame, grayFrame8U, grayFrame32F;
+	cv::Mat frame, grayFrame8U, grayFrame32F, deviationImage, backgroundImage, binaryImage;
 	cv::Point2f currentOffset;
 
 	const float refreshRate = 0.02f;
@@ -65,10 +71,18 @@ int project_demo(int argc, char* argv[])
 		detector.calcFrameStaticPartMask(grayFrame32F, deviationFactor);
 		detector.calcAverageBackAndDeviationImg(grayFrame32F, refreshRate);
 		detector.calcTargetsBinaryFrame(grayFrame32F, targetsFactor);
+		
+		detector.getDeviationImage(deviationImage);
+		detector.getBackgroundImage(backgroundImage);
+		detector.getBinaryImage(binaryImage);
 
 		cv::line(frame, cv::Point(frame.cols / 2, 200), cv::Point(frame.cols / 2, frame.rows - 200), cv::Scalar(0, 0, 255), 2, 8);
 		utils::put_fps_text(frame, fps);
+		
 		cv::imshow(origin_wnd, frame);
+		cv::imshow(deviation_image_wnd, deviationImage);
+		cv::imshow(background_image_wnd, backgroundImage);
+		cv::imshow(binary_image_wnd, binaryImage);
 
 		char key = (char)cv::waitKey(1); 
 		if (key == 27)
@@ -83,7 +97,9 @@ int project_demo(int argc, char* argv[])
 	}
 
 	cv::destroyWindow(origin_wnd);
-	cv::destroyWindow(demo_wnd);
+	cv::destroyWindow(deviation_image_wnd);
+	cv::destroyWindow(background_image_wnd);
+	cv::destroyWindow(binary_image_wnd);
 
 	return 0;
 }
