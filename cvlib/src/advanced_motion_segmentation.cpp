@@ -184,22 +184,20 @@ namespace cvlib
 		translatedDeviationImg.copyTo(m_deviationImg);
 	}
 
-	int Detector::getBackgroundBoundOpenCV(cv::Mat frame)
+	int Detector::getBackgroundFactor()
 	{
-		cv::Mat histogram;
-
 		int histSize = 256;
 		float range[] = { 0, 256 };
 		const float* histRange = { range };
 
-		calcHist(&frame, 1, 0, cv::Mat(), histogram, 1, &histSize, &histRange);
+		calcHist(&m_currDeviationImg, 1, 0, cv::Mat(), m_hist, 1, &histSize, &histRange);
 
 		int startInd = 1;
-		if (histogram.at<float>(0) <= histogram.at<float>(1))
+		if (m_hist.at<float>(0) <= m_hist.at<float>(1))
 		{
 			for (startInd = 1; startInd < 256; startInd++)
 			{
-				if (histogram.at<float>(startInd + 1) < histogram.at<float>(startInd))
+				if (m_hist.at<float>(startInd + 1) < m_hist.at<float>(startInd))
 					break;
 			}
 		}
@@ -207,7 +205,7 @@ namespace cvlib
 		int endInd = 1;
 		for (endInd = startInd; endInd < 256; endInd++)
 		{
-			if (histogram.at<float>(endInd + 1) >= histogram.at<float>(endInd))
+			if (m_hist.at<float>(endInd + 1) >= m_hist.at<float>(endInd))
 				break;
 		}
 
@@ -231,29 +229,28 @@ namespace cvlib
 		m_currFrame8u.convertTo(m_currFrame32f, CV_32F);
 
 		cv::Point2f frameOffset = getFrameOffset();
+		cv::Point2f frameOffset(0, 0);
 		translateAverageBackAndDeviationImg(frameOffset);
 		
 		m_currDeviationImg = cv::abs(m_currFrame32f - m_averageBackImg);
 		m_frameStaticPartMask = (m_deviationFactor * m_deviationImg) > m_currDeviationImg;
 
-		cv::Mat currFrameStaticPart, currDeviationImgStaticPart;
-		m_averageBackImg.copyTo(currFrameStaticPart);
-		m_currFrame32f.copyTo(currFrameStaticPart, m_frameStaticPartMask);
-		m_deviationImg.copyTo(currDeviationImgStaticPart);
-		m_currDeviationImg.copyTo(currDeviationImgStaticPart, m_frameStaticPartMask);
+		m_averageBackImg.copyTo(m_currFrameStaticPart);
+		m_currFrame32f.copyTo(m_currFrameStaticPart, m_frameStaticPartMask);
+		
+		m_deviationImg.copyTo(m_currDeviationImgStaticPart);
+		m_currDeviationImg.copyTo(m_currDeviationImgStaticPart, m_frameStaticPartMask);
 
-		m_averageBackImg = (1 - m_refreshRate) * m_averageBackImg + m_refreshRate * currFrameStaticPart;
-		m_deviationImg = (1 - m_refreshRate) * m_deviationImg + m_refreshRate * currDeviationImgStaticPart;
+		m_averageBackImg = (1 - m_refreshRate) * m_averageBackImg + m_refreshRate * m_currFrameStaticPart;
+		m_deviationImg = (1 - m_refreshRate) * m_deviationImg + m_refreshRate * m_currDeviationImgStaticPart;
 
 		m_frameStaticPartMask = (m_targetsFactor * m_deviationImg) > m_currDeviationImg;
 
-		int backgroundBound = getBackgroundBoundOpenCV(m_currDeviationImg);
-		cv::Mat backgroundBoundMask = m_currDeviationImg <= backgroundBound;
-
-		m_frameStaticPartMask.setTo(cv::Scalar(255), backgroundBoundMask);
+		m_currDeviationImg.convertTo(m_currDeviationImg, CV_8U);
+		m_backgroundMask = m_currDeviationImg <= getBackgroundFactor();
 
 		m_targetsBinaryFrame = cv::Mat(m_currFrame8u.size(), CV_8U, cv::Scalar(255));
-		m_targetsBinaryFrame.setTo(cv::Scalar(0), m_frameStaticPartMask);
+		m_targetsBinaryFrame.setTo(cv::Scalar(0), m_frameStaticPartMask + m_backgroundMask);
 	}
 
 	void Detector::getDeviationImage(cv::Mat &deviationImage)

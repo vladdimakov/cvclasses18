@@ -113,7 +113,7 @@ private:
 	void translateFrame(cv::Mat inputFrame, cv::Mat& outputFrame, cv::Point2f offset);
 	cv::Mat subPixTranslateFrameOpenCV(cv::Mat inputFrame, cv::Point2f subPixOffset);
 	void translateAverageBackAndDeviationImg(cv::Point2f frameOffset);
-	int getBackgroundBoundOpenCV(cv::Mat frame);
+	int getBackgroundFactor();
 
 	bool m_needToInit;
 	float m_refreshRate;
@@ -132,12 +132,13 @@ private:
 
 	cv::Mat m_currDeviationImg;
 	cv::Mat m_frameStaticPartMask;
+	cv::Mat m_backgroundMask;
 	cv::Mat m_currFrameStaticPart;
 	cv::Mat m_currDeviationImgStaticPart;
+	cv::Mat m_hist;
 
 	cv::Mat m_deviationImg;
 	cv::Mat m_averageBackImg;
-
 	cv::Mat m_targetsBinaryFrame;
 };
 } // namespace cvlib
