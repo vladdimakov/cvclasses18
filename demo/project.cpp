@@ -9,24 +9,10 @@
 
 int project_demo(int argc, char* argv[])
 {
-	const cv::String keys = // clang-format off
-		"{help h usage ? |      | print this message   }"
-		"{video          |      | video file           }";
-	// clang-format on
-
+	const cv::String keys = "{video          |      | video file           }";
 	cv::CommandLineParser parser(argc, argv, keys);
-	parser.about("Application name v1.0.0");
-	if (parser.has("help"))
-	{
-		parser.printMessage();
-		return 0;
-	}
-
-	auto video = parser.get<cv::String>("video");
-	cv::VideoCapture cap(video);
-	if (!cap.isOpened())
-		return -1;
-
+	auto videoFile = parser.get<cv::String>("video");
+	
 	const auto origin_wnd = "Origin";
 	const auto deviation_image_wnd = "Deviation image";
 	const auto background_image_wnd = "Background image";
@@ -54,6 +40,10 @@ int project_demo(int argc, char* argv[])
 	const float targetsFactor = 15.0f;
 	const float scalingFactor = 20.0f;
 	detector.deviationImgFillValue = 256.0f / targetsFactor;
+
+	cv::VideoCapture cap(videoFile);
+	if (!cap.isOpened())
+		return -1;
 
 	utils::fps_counter fps;
 	while (true)
