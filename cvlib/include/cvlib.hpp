@@ -95,6 +95,32 @@ class corner_detector_fast : public cv::Feature2D
     double m_sigma;
     std::vector<std::pair<cv::Point2i, cv::Point2i>> m_testPoints;
 };
+
+class Detector
+{
+public:
+	Detector();
+	std::vector<cv::Point2f> findCorners(cv::Mat grayFrame, int maxCornersNum);
+	void calcOpticalFlow(cv::Mat prevGrayFrame, cv::Mat currentGrayFrame, std::vector<cv::Point2f> prevPoints, std::vector<cv::Point2f>& currentPoints, std::vector<uchar>& status);
+	void translateFrame(cv::Mat inputFrame, cv::Mat& outputFrame, cv::Point2f offset);
+	cv::Mat subPixTranslateFrameOpenCV(cv::Mat inputFrame, cv::Point2f subPixOffset);
+	float findMedian(std::vector<float> value);
+	cv::Point2f findOffsetMedian(std::vector<cv::Point2f> prevPoints, std::vector<cv::Point2f> currentPoints);
+	void makeInitialFrame(cv::Mat prevGrayFrame, std::vector<cv::Point2f>& prevPoints);
+	cv::Point2f calcFrameOffset(cv::Mat& currentGrayFrame);
+	void translateAverageBackAndDeviationImg(cv::Mat currentFrame, cv::Point2f currentOffset);
+	void calcFrameStaticPartMask(cv::Mat currentFrame, float deviationFactor);
+	void calcAverageBackAndDeviationImg(cv::Mat currentFrame, float refreshRate);
+	int getBackgroundBoundOpenCV(cv::Mat frame);
+	void calcTargetsBinaryFrame(cv::Mat currentFrame, float targetsFactor);
+
+	cv::Mat frameStaticPartMask, averageBackImg, deviationImg, targetsBinaryFrame;
+	bool needToInit;
+	float deviationImgFillValue;
+
+	cv::Mat prevGrayFrame, currentDeviationImg;
+	std::vector<cv::Point2f> prevPoints, currentPoints;
+};
 } // namespace cvlib
 
 #endif // __CVLIB_HPP__
