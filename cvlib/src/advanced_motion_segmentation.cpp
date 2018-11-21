@@ -83,13 +83,10 @@ namespace cvlib
 	
 	void Detector::translateFrame(cv::Mat inputFrame, cv::Mat& outputFrame, cv::Point2f offset)
 	{
-		cv::Point2i intOffset;
-		intOffset.x = (int)offset.x;
-		intOffset.y = (int)offset.y;
+		cv::Point2i frameSize(inputFrame.size().width, inputFrame.size().height);
 
-		cv::Point2f subPixOffset;
-		subPixOffset.x = offset.x - (float)intOffset.x;
-		subPixOffset.y = offset.y - (float)intOffset.y;
+		cv::Point2i intOffset = cv::Point2i(offset);
+		cv::Point2f subPixOffset = offset - cv::Point2f(intOffset);
 
 		if (subPixOffset.x != 0.0f || subPixOffset.y != 0.0f)
 		{
@@ -114,35 +111,36 @@ namespace cvlib
 				intOffset.y -= 1;
 			}
 
-			inputFrame = subPixTranslateFrameOpenCV(inputFrame, subPixOffset);
+			cv::Point2f center = cv::Point2f(frameSize) / 2 + subPixOffset - cv::Point2f(0.5, 0.5);
+			getRectSubPix(inputFrame, inputFrame.size(), center, inputFrame);
 		}
 
 		if (intOffset.x != 0 || intOffset.y != 0)
 		{
-			int xOld[2] = { 0, inputFrame.size().width };
-			int yOld[2] = { 0, inputFrame.size().height };
-			int xNew[2] = { 0, inputFrame.size().width };
-			int yNew[2] = { 0, inputFrame.size().height };
+			int xOld[2] = { 0, frameSize.x };
+			int yOld[2] = { 0, frameSize.y };
+			int xNew[2] = { 0, frameSize.x };
+			int yNew[2] = { 0, frameSize.y };
 
 			if (intOffset.x > 0)
 			{
 				xOld[0] = intOffset.x;
-				xNew[1] = inputFrame.size().width - intOffset.x;
+				xNew[1] -= intOffset.x;
 			}
 			else if (intOffset.x < 0)
 			{
-				xOld[1] = inputFrame.size().width + intOffset.x;
+				xOld[1] += intOffset.x;
 				xNew[0] = -intOffset.x;
 			}
 
 			if (intOffset.y > 0)
 			{
 				yOld[0] = intOffset.y;
-				yNew[1] = inputFrame.size().height - intOffset.y;
+				yNew[1] -= intOffset.y;
 			}
 			else if (intOffset.y < 0)
 			{
-				yOld[1] = inputFrame.size().height + intOffset.y;
+				yOld[1] += intOffset.y;
 				yNew[0] = -intOffset.y;
 			}
 
@@ -154,34 +152,16 @@ namespace cvlib
 		}
 	}
 
-	cv::Mat Detector::subPixTranslateFrameOpenCV(cv::Mat inputFrame, cv::Point2f subPixOffset)
-	{
-		if (subPixOffset.x == 0.0f && subPixOffset.y == 0.0f)
-			return inputFrame;
-
-		cv::Mat outputFrame;
-		cv::Point2f center;
-
-		center.x = (float)inputFrame.size().width / 2 - 0.5f + subPixOffset.x;
-		center.y = (float)inputFrame.size().height / 2 - 0.5f + subPixOffset.y;
-
-		getRectSubPix(inputFrame, inputFrame.size(), center, outputFrame);
-
-		return outputFrame;
-	}
-
 	void Detector::translateAverageBackAndDeviationImg(cv::Point2f frameOffset)
 	{
-		cv::Mat translatedAverageBackImg, translatedDeviationImg;
+		m_currFrame32f.copyTo(m_translatedAverageBackImg);
+		translateFrame(m_averageBackImg, m_translatedAverageBackImg, frameOffset);
 
-		m_currFrame32f.copyTo(translatedAverageBackImg);
-		translateFrame(m_averageBackImg, translatedAverageBackImg, frameOffset);
+		m_translatedDeviationImg = cv::Mat(m_currFrame32f.size(), CV_32F, cv::Scalar(m_deviationImgInitValue));
+		translateFrame(m_deviationImg, m_translatedDeviationImg, frameOffset);
 
-		translatedDeviationImg = cv::Mat(m_currFrame32f.size(), CV_32F, cv::Scalar(m_deviationImgInitValue));
-		translateFrame(m_deviationImg, translatedDeviationImg, frameOffset);
-
-		translatedAverageBackImg.copyTo(m_averageBackImg);
-		translatedDeviationImg.copyTo(m_deviationImg);
+		m_translatedAverageBackImg.copyTo(m_averageBackImg);
+		m_translatedDeviationImg.copyTo(m_deviationImg);
 	}
 
 	int Detector::getBackgroundFactor()
@@ -229,7 +209,6 @@ namespace cvlib
 		m_currFrame8u.convertTo(m_currFrame32f, CV_32F);
 
 		cv::Point2f frameOffset = getFrameOffset();
-		cv::Point2f frameOffset(0, 0);
 		translateAverageBackAndDeviationImg(frameOffset);
 		
 		m_currDeviationImg = cv::abs(m_currFrame32f - m_averageBackImg);

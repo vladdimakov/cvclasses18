@@ -111,7 +111,6 @@ private:
 	cv::Point2f getPointsOffset();
 	cv::Point2f getFrameOffset();
 	void translateFrame(cv::Mat inputFrame, cv::Mat& outputFrame, cv::Point2f offset);
-	cv::Mat subPixTranslateFrameOpenCV(cv::Mat inputFrame, cv::Point2f subPixOffset);
 	void translateAverageBackAndDeviationImg(cv::Point2f frameOffset);
 	int getBackgroundFactor();
 
@@ -138,7 +137,9 @@ private:
 	cv::Mat m_hist;
 
 	cv::Mat m_deviationImg;
+	cv::Mat m_translatedDeviationImg;
 	cv::Mat m_averageBackImg;
+	cv::Mat m_translatedAverageBackImg;
 	cv::Mat m_targetsBinaryFrame;
 };
 } // namespace cvlib
