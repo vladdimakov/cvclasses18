@@ -96,51 +96,52 @@ class corner_detector_fast : public cv::Feature2D
     std::vector<std::pair<cv::Point2i, cv::Point2i>> m_testPoints;
 };
 
-class Detector
+class AdvancedMotionSegmentation
 {
-public:
-	Detector(float refreshRate, float deviationFactor, float targetsFactor, int maxCornersNum, int minCornersNum);
-	void setNeedToInit(bool needToInit);
-	void process(const cv::Mat &frame);
-	void getDeviationImage(cv::Mat &deviationImage);
-	void getBackgroundImage(cv::Mat &backgroundImage);
-	void getBinaryImage(cv::Mat &binaryImage);
-private:
-	void init();
-	float getVectMedian(std::vector<float> value);
-	cv::Point2f getPointsOffset();
-	cv::Point2f getFrameOffset();
-	void translateFrame(cv::Mat inputFrame, cv::Mat& outputFrame, cv::Point2f offset);
-	void translateAverageBackAndDeviationImg(cv::Point2f frameOffset);
-	int getBackgroundFactor();
+    public:
+    AdvancedMotionSegmentation(float refreshRate, float deviationFactor, float targetsFactor, int maxCornersNum, int minCornersNum);
+    void setNeedToInit(bool needToInit);
+    void process(const cv::Mat& frame);
+    void getDeviationImage(cv::Mat& deviationImage);
+    void getBackgroundImage(cv::Mat& backgroundImage);
+    void getBinaryImage(cv::Mat& binaryImage);
 
-	bool m_needToInit;
-	float m_refreshRate;
-	float m_deviationFactor;
-	float m_targetsFactor;
-	int m_maxCornersNum;
-	int m_minCornersNum;
-	float m_deviationImgInitValue;
-	
-	std::vector<cv::Point2f> m_currPoints;
-	std::vector<cv::Point2f> m_prevPoints;
+    private:
+    void init();
+    float getVectMedian(std::vector<float> value);
+    cv::Point2f getPointsOffset();
+    cv::Point2f getFrameOffset();
+    void translateFrame(cv::Mat inputFrame, cv::Mat& outputFrame, cv::Point2f offset);
+    void translateAverageBackAndDeviationImg(cv::Point2f frameOffset);
+    int getBackgroundFactor();
 
-	cv::Mat m_currFrame8u;
-	cv::Mat m_currFrame32f;
-	cv::Mat m_prevFrame8u;
+    bool m_needToInit;
+    float m_refreshRate;
+    float m_deviationFactor;
+    float m_targetsFactor;
+    int m_maxCornersNum;
+    int m_minCornersNum;
+    float m_deviationImgInitValue;
 
-	cv::Mat m_currDeviationImg;
-	cv::Mat m_frameStaticPartMask;
-	cv::Mat m_backgroundMask;
-	cv::Mat m_currFrameStaticPart;
-	cv::Mat m_currDeviationImgStaticPart;
-	cv::Mat m_hist;
+    std::vector<cv::Point2f> m_currPoints;
+    std::vector<cv::Point2f> m_prevPoints;
 
-	cv::Mat m_deviationImg;
-	cv::Mat m_translatedDeviationImg;
-	cv::Mat m_averageBackImg;
-	cv::Mat m_translatedAverageBackImg;
-	cv::Mat m_targetsBinaryFrame;
+    cv::Mat m_currFrame8u;
+    cv::Mat m_currFrame32f;
+    cv::Mat m_prevFrame8u;
+
+    cv::Mat m_currDeviationImg;
+    cv::Mat m_frameStaticPartMask;
+    cv::Mat m_backgroundMask;
+    cv::Mat m_currFrameStaticPart;
+    cv::Mat m_currDeviationImgStaticPart;
+    cv::Mat m_hist;
+
+    cv::Mat m_deviationImg;
+    cv::Mat m_translatedDeviationImg;
+    cv::Mat m_averageBackImg;
+    cv::Mat m_translatedAverageBackImg;
+    cv::Mat m_binaryFrame;
 };
 } // namespace cvlib
 
