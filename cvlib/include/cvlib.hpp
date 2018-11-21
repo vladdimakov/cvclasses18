@@ -106,31 +106,39 @@ public:
 	void getBackgroundImage(cv::Mat &backgroundImage);
 	void getBinaryImage(cv::Mat &binaryImage);
 private:
-	void calcOpticalFlow(cv::Mat prevGrayFrame, cv::Mat currentGrayFrame, std::vector<cv::Point2f> prevPoints, std::vector<cv::Point2f>& currentPoints, std::vector<uchar>& status);
+	void init();
+	float getVectMedian(std::vector<float> value);
+	cv::Point2f getPointsOffset();
+	cv::Point2f getFrameOffset();
 	void translateFrame(cv::Mat inputFrame, cv::Mat& outputFrame, cv::Point2f offset);
 	cv::Mat subPixTranslateFrameOpenCV(cv::Mat inputFrame, cv::Point2f subPixOffset);
-	float findMedian(std::vector<float> value);
-	cv::Point2f findOffsetMedian(std::vector<cv::Point2f> prevPoints, std::vector<cv::Point2f> currentPoints);
-	void init();
-	cv::Point2f calcFrameOffset(cv::Mat& currentGrayFrame);
-	void translateAverageBackAndDeviationImg(cv::Mat currentFrame, cv::Point2f currentOffset);
-	void calcFrameStaticPartMask(cv::Mat currentFrame, float deviationFactor);
-	void calcAverageBackAndDeviationImg(cv::Mat currentFrame, float refreshRate);
+	void translateAverageBackAndDeviationImg(cv::Point2f frameOffset);
 	int getBackgroundBoundOpenCV(cv::Mat frame);
-	void calcTargetsBinaryFrame(cv::Mat currentFrame, float targetsFactor);
 
+	bool m_needToInit;
 	float m_refreshRate;
 	float m_deviationFactor;
 	float m_targetsFactor;
 	int m_maxCornersNum;
 	int m_minCornersNum;
+	float m_deviationImgInitValue;
+	
+	std::vector<cv::Point2f> m_currPoints;
+	std::vector<cv::Point2f> m_prevPoints;
 
-	cv::Mat m_frameStaticPartMask, m_averageBackImg, m_deviationImg, m_targetsBinaryFrame;
-	bool m_needToInit;
-	float m_deviationImgFillValue;
+	cv::Mat m_currFrame8u;
+	cv::Mat m_currFrame32f;
+	cv::Mat m_prevFrame8u;
 
-	cv::Mat m_prevGrayFrame, m_currentDeviationImg;
-	std::vector<cv::Point2f> m_prevPoints, m_currentPoints;
+	cv::Mat m_currDeviationImg;
+	cv::Mat m_frameStaticPartMask;
+	cv::Mat m_currFrameStaticPart;
+	cv::Mat m_currDeviationImgStaticPart;
+
+	cv::Mat m_deviationImg;
+	cv::Mat m_averageBackImg;
+
+	cv::Mat m_targetsBinaryFrame;
 };
 } // namespace cvlib
 

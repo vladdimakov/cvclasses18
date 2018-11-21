@@ -1,4 +1,5 @@
 #include "cvlib.hpp"
+#include <functional>
 
 namespace cvlib
 {
@@ -6,21 +7,80 @@ namespace cvlib
 		m_refreshRate(refreshRate), m_deviationFactor(deviationFactor), m_targetsFactor(targetsFactor), m_maxCornersNum(maxCornersNum),	m_minCornersNum(minCornersNum)
 	{
 		m_needToInit = true;
-		m_deviationImgFillValue = 256.0f / targetsFactor;
+		m_deviationImgInitValue = 256.0f / targetsFactor;
+	}
+
+	void Detector::init()
+	{
+		m_prevFrame8u.convertTo(m_averageBackImg, CV_32F);
+		m_deviationImg = cv::Mat(m_prevFrame8u.size(), CV_32F, cv::Scalar(m_deviationImgInitValue));
+
+		m_prevPoints.clear();
+		goodFeaturesToTrack(m_prevFrame8u, m_prevPoints, m_maxCornersNum, 0.25, 10, cv::Mat(), 3, false, 0.04);
+	}
+
+	float Detector::getVectMedian(std::vector<float> vect)
+	{
+		std::sort(vect.begin(), vect.end(), std::greater_equal<float>());
+		return (vect.size() % 2 == 1) ? vect[int(vect.size() / 2)] : (vect[vect.size() / 2 - 1] + vect[vect.size() / 2]) / 2;
+	}
+
+	cv::Point2f Detector::getPointsOffset()
+	{
+		if (m_currPoints.size() != 0)
+		{
+			std::vector<float> xOffset, yOffset;
+			for (int i = 0; i < m_currPoints.size(); i++)
+			{
+				xOffset.push_back(m_prevPoints[i].x - m_currPoints[i].x);
+				yOffset.push_back(m_prevPoints[i].y - m_currPoints[i].y);
+			}
+
+			return cv::Point2f(getVectMedian(xOffset), getVectMedian(yOffset));
+		}
+
+		return cv::Point2f(0, 0);
+	}
+
+	cv::Point2f Detector::getFrameOffset()
+	{
+		if (m_needToInit)
+		{
+			m_currFrame8u.copyTo(m_prevFrame8u);
+			init();
+			m_needToInit = false;
+			return cv::Point2f(0, 0);
+		}
+
+		std::vector<uchar> status;
+		std::vector<float> error;
+		cv::TermCriteria criteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 30, 0.01);
+		calcOpticalFlowPyrLK(m_prevFrame8u, m_currFrame8u, m_prevPoints, m_currPoints, status, error, cv::Size(21, 21), 3, criteria, 0, 0.0001);
+
+		size_t k = 0;
+		for (size_t i = 0; i < m_currPoints.size(); i++)
+		{
+			if (status[i])
+			{
+				m_currPoints[k] = m_currPoints[i];
+				m_prevPoints[k] = m_prevPoints[i];
+				k++;
+			}
+		}
+		m_currPoints.resize(k);
+		m_prevPoints.resize(k);
+
+		if (m_currPoints.size() < m_minCornersNum)
+			m_needToInit = true;
+
+		cv::Point2f frameOffset = getPointsOffset();
+
+		std::swap(m_prevPoints, m_currPoints);
+		cv::swap(m_prevFrame8u, m_currFrame8u);
+
+		return frameOffset;
 	}
 	
-	void Detector::calcOpticalFlow(cv::Mat prevGrayFrame, cv::Mat currentGrayFrame, std::vector<cv::Point2f> prevPoints, std::vector<cv::Point2f>& currentPoints, std::vector<uchar>& status)
-	{
-		std::vector<float> err; // Вектор погрешностей. Тип меры погрешности может быть установлен соответсвующим флагом
-		cv::Size winSize(21, 21); // Размер окна при поиске
-		int maxLevel = 3; // Максимальное число уровней пирамид
-		cv::TermCriteria criteria(cv::TermCriteria::COUNT | cv::TermCriteria::EPS, 30, 0.01); // Параметр, указывающий критерии завершения алгоритма итеративного поиска сдвига
-		int flags = 0; // Флаги
-		double minEigThreshold = 0.0001; // Пороговое значение градиента, ниже которого матрица считается вырожденной
-
-		calcOpticalFlowPyrLK(prevGrayFrame, currentGrayFrame, prevPoints, currentPoints, status, err, winSize, maxLevel, criteria, flags, minEigThreshold);
-	}
-
 	void Detector::translateFrame(cv::Mat inputFrame, cv::Mat& outputFrame, cv::Point2f offset)
 	{
 		cv::Point2i intOffset;
@@ -110,138 +170,18 @@ namespace cvlib
 		return outputFrame;
 	}
 
-	float Detector::findMedian(std::vector<float> value)
-	{
-		bool exit = false;
-		size_t size = value.size();
-
-		while (!exit)
-		{
-			exit = true;
-			for (size_t i = 0; i < size - 1; i++)
-			{
-				if (value[i] > value[i + 1])
-				{
-					std::swap(value[i], value[i + 1]);
-					exit = false;
-				}
-			}
-		}
-
-		if (size % 2 == 1)
-		{
-			return value[int(size / 2)];
-		}
-		else
-		{
-			return (value[size / 2 - 1] + value[size / 2]) / 2;
-		}
-	}
-
-	cv::Point2f Detector::findOffsetMedian(std::vector<cv::Point2f> prevPoints, std::vector<cv::Point2f> currentPoints)
-	{
-		if (currentPoints.size() != 0)
-		{
-			std::vector<float> xOffset, yOffset;
-
-			for (int i = 0; i < currentPoints.size(); i++)
-			{
-				xOffset.push_back(prevPoints[i].x - currentPoints[i].x);
-				yOffset.push_back(prevPoints[i].y - currentPoints[i].y);
-			}
-
-			return cv::Point2f(findMedian(xOffset), findMedian(yOffset));
-		}
-		else
-		{
-			return cv::Point2f(0, 0);
-		}
-	}
-
-	void Detector::init()
-	{
-		m_prevGrayFrame.convertTo(m_averageBackImg, CV_32F);
-
-		m_deviationImg = cv::Mat(m_averageBackImg.size(), CV_32F, cv::Scalar(m_deviationImgFillValue));
-	
-		m_prevPoints.clear();
-		goodFeaturesToTrack(m_prevGrayFrame, m_prevPoints, m_maxCornersNum, 0.25, 10, cv::Mat(), 3, false, 0.04);
-	}
-
-	cv::Point2f Detector::calcFrameOffset(cv::Mat& currentGrayFrame)
-	{
-		if (m_needToInit)
-		{
-			currentGrayFrame.copyTo(m_prevGrayFrame);
-			init();
-			m_needToInit = false;
-			return cv::Point2f(0, 0);
-		}
-
-		std::vector<uchar> status;
-		cv::Point2f frameOffset;
-
-		calcOpticalFlow(m_prevGrayFrame, currentGrayFrame, m_prevPoints, m_currentPoints, status);
-
-		size_t k = 0;
-		for (size_t i = 0; i < m_currentPoints.size(); i++)
-		{
-			if (status[i])
-			{
-				m_currentPoints[k] = m_currentPoints[i];
-				m_prevPoints[k] = m_prevPoints[i];
-				k++;
-			}
-		}
-		m_currentPoints.resize(k);
-		m_prevPoints.resize(k);
-
-		if (m_currentPoints.size() < m_minCornersNum)
-			m_needToInit = true;
-
-		frameOffset = findOffsetMedian(m_prevPoints, m_currentPoints);
-
-		std::swap(m_prevPoints, m_currentPoints);
-		cv::swap(m_prevGrayFrame, currentGrayFrame);
-
-		return frameOffset;
-	}
-
-	void Detector::translateAverageBackAndDeviationImg(cv::Mat currentFrame, cv::Point2f currentOffset)
+	void Detector::translateAverageBackAndDeviationImg(cv::Point2f frameOffset)
 	{
 		cv::Mat translatedAverageBackImg, translatedDeviationImg;
 
-		currentFrame.copyTo(translatedAverageBackImg);
-		translateFrame(m_averageBackImg, translatedAverageBackImg, currentOffset);
+		m_currFrame32f.copyTo(translatedAverageBackImg);
+		translateFrame(m_averageBackImg, translatedAverageBackImg, frameOffset);
 
-		translatedDeviationImg = cv::Mat(currentFrame.size(), CV_32F, cv::Scalar(m_deviationImgFillValue));
-		translateFrame(m_deviationImg, translatedDeviationImg, currentOffset);
+		translatedDeviationImg = cv::Mat(m_currFrame32f.size(), CV_32F, cv::Scalar(m_deviationImgInitValue));
+		translateFrame(m_deviationImg, translatedDeviationImg, frameOffset);
 
 		translatedAverageBackImg.copyTo(m_averageBackImg);
 		translatedDeviationImg.copyTo(m_deviationImg);
-	}
-
-	void Detector::calcFrameStaticPartMask(cv::Mat currentFrame, float deviationFactor)
-	{
-		m_currentDeviationImg = abs(currentFrame - m_averageBackImg);
-
-		m_frameStaticPartMask = deviationFactor * m_deviationImg - m_currentDeviationImg;
-		m_frameStaticPartMask.convertTo(m_frameStaticPartMask, CV_8U);
-	}
-
-	void Detector::calcAverageBackAndDeviationImg(cv::Mat currentFrame, float refreshRate)
-	{
-		cv::Mat currentDeviationImgStaticPart, currentFrameStaticPart;
-
-		m_averageBackImg.copyTo(currentFrameStaticPart);
-		currentFrame.copyTo(currentFrameStaticPart, m_frameStaticPartMask);
-
-		m_averageBackImg = (1 - refreshRate) * m_averageBackImg + refreshRate * currentFrameStaticPart;
-
-		m_deviationImg.copyTo(currentDeviationImgStaticPart);
-		m_currentDeviationImg.copyTo(currentDeviationImgStaticPart, m_frameStaticPartMask);
-
-		m_deviationImg = (1 - refreshRate) * m_deviationImg + refreshRate * currentDeviationImgStaticPart;
 	}
 
 	int Detector::getBackgroundBoundOpenCV(cv::Mat frame)
@@ -260,9 +200,7 @@ namespace cvlib
 			for (startInd = 1; startInd < 256; startInd++)
 			{
 				if (histogram.at<float>(startInd + 1) < histogram.at<float>(startInd))
-				{
 					break;
-				}
 			}
 		}
 
@@ -270,31 +208,10 @@ namespace cvlib
 		for (endInd = startInd; endInd < 256; endInd++)
 		{
 			if (histogram.at<float>(endInd + 1) >= histogram.at<float>(endInd))
-			{
 				break;
-			}
 		}
 
 		return endInd;
-	}
-
-	void Detector::calcTargetsBinaryFrame(cv::Mat currentFrame, float targetsFactor)
-	{
-		cv::Mat backgroundBoundMask = cv::Mat(currentFrame.size(), CV_8U, cv::Scalar(255));
-
-		m_currentDeviationImg = abs(currentFrame - m_averageBackImg);
-
-		m_frameStaticPartMask = targetsFactor * m_deviationImg - m_currentDeviationImg;
-		m_frameStaticPartMask.convertTo(m_frameStaticPartMask, CV_8U);
-
-		m_currentDeviationImg.convertTo(m_currentDeviationImg, CV_8U);
-		int backgroundBound = getBackgroundBoundOpenCV(m_currentDeviationImg);
-
-		cv::Mat(currentFrame.size(), CV_8U, cv::Scalar(0)).copyTo(backgroundBoundMask, m_currentDeviationImg - backgroundBound);
-		cv::Mat(currentFrame.size(), CV_8U, cv::Scalar(255)).copyTo(m_frameStaticPartMask, backgroundBoundMask);
-
-		m_targetsBinaryFrame.setTo(cv::Scalar(255));
-		cv::Mat(currentFrame.size(), CV_8U, cv::Scalar(0)).copyTo(m_targetsBinaryFrame, m_frameStaticPartMask);
 	}
 
 	void Detector::setNeedToInit(bool needToInit)
@@ -304,16 +221,39 @@ namespace cvlib
 
 	void Detector::process(const cv::Mat &frame)
 	{
-		cv::Mat grayFrame8U, grayFrame32F;
+		if (frame.empty())
+			return;
+		else if (frame.channels() == 1)
+			frame.copyTo(m_currFrame8u);
+		else if (frame.channels() == 3)
+			cv::cvtColor(frame, m_currFrame8u, cv::COLOR_BGR2GRAY);
 
-		cv::cvtColor(frame, grayFrame8U, CV_RGB2GRAY);
-		grayFrame8U.convertTo(grayFrame32F, CV_32F);
+		m_currFrame8u.convertTo(m_currFrame32f, CV_32F);
 
-		cv::Point2f currentOffset = calcFrameOffset(grayFrame8U);
-		translateAverageBackAndDeviationImg(grayFrame32F, currentOffset);
-		calcFrameStaticPartMask(grayFrame32F, m_deviationFactor);
-		calcAverageBackAndDeviationImg(grayFrame32F, m_refreshRate);
-		calcTargetsBinaryFrame(grayFrame32F, m_targetsFactor);
+		cv::Point2f frameOffset = getFrameOffset();
+		translateAverageBackAndDeviationImg(frameOffset);
+		
+		m_currDeviationImg = cv::abs(m_currFrame32f - m_averageBackImg);
+		m_frameStaticPartMask = (m_deviationFactor * m_deviationImg) > m_currDeviationImg;
+
+		cv::Mat currFrameStaticPart, currDeviationImgStaticPart;
+		m_averageBackImg.copyTo(currFrameStaticPart);
+		m_currFrame32f.copyTo(currFrameStaticPart, m_frameStaticPartMask);
+		m_deviationImg.copyTo(currDeviationImgStaticPart);
+		m_currDeviationImg.copyTo(currDeviationImgStaticPart, m_frameStaticPartMask);
+
+		m_averageBackImg = (1 - m_refreshRate) * m_averageBackImg + m_refreshRate * currFrameStaticPart;
+		m_deviationImg = (1 - m_refreshRate) * m_deviationImg + m_refreshRate * currDeviationImgStaticPart;
+
+		m_frameStaticPartMask = (m_targetsFactor * m_deviationImg) > m_currDeviationImg;
+
+		int backgroundBound = getBackgroundBoundOpenCV(m_currDeviationImg);
+		cv::Mat backgroundBoundMask = m_currDeviationImg <= backgroundBound;
+
+		m_frameStaticPartMask.setTo(cv::Scalar(255), backgroundBoundMask);
+
+		m_targetsBinaryFrame = cv::Mat(m_currFrame8u.size(), CV_8U, cv::Scalar(255));
+		m_targetsBinaryFrame.setTo(cv::Scalar(0), m_frameStaticPartMask);
 	}
 
 	void Detector::getDeviationImage(cv::Mat &deviationImage)
