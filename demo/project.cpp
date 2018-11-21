@@ -31,15 +31,12 @@ int project_demo(int argc, char* argv[])
 	cv::resizeWindow(background_image_wnd, wnd_width, wnd_height);
 	cv::resizeWindow(binary_image_wnd, wnd_width, wnd_height);
 	
-	cvlib::Detector detector;
-	cv::Mat frame, grayFrame8U, grayFrame32F, deviationImage, backgroundImage, binaryImage;
-	cv::Point2f currentOffset;
+	float refreshRate = 0.02f;
+	float deviationFactor = 5.5f;
+	float targetsFactor = 15.0f;
+	cvlib::Detector detector(refreshRate, deviationFactor, targetsFactor);
 
-	const float refreshRate = 0.02f;
-	const float deviationFactor = 5.5f;
-	const float targetsFactor = 15.0f;
-	const float scalingFactor = 20.0f;
-	detector.deviationImgFillValue = 256.0f / targetsFactor;
+	cv::Mat frame, deviationImage, backgroundImage, binaryImage;
 
 	cv::VideoCapture cap(videoFile);
 	if (!cap.isOpened())
@@ -53,14 +50,7 @@ int project_demo(int argc, char* argv[])
 		if (frame.empty())
 			break;
 
-		cv::cvtColor(frame, grayFrame8U, CV_RGB2GRAY);
-		grayFrame8U.convertTo(grayFrame32F, CV_32F);
-
-		currentOffset = detector.calcFrameOffset(grayFrame8U);
-		detector.translateAverageBackAndDeviationImg(grayFrame32F, currentOffset);
-		detector.calcFrameStaticPartMask(grayFrame32F, deviationFactor);
-		detector.calcAverageBackAndDeviationImg(grayFrame32F, refreshRate);
-		detector.calcTargetsBinaryFrame(grayFrame32F, targetsFactor);
+		detector.process(frame);
 		
 		detector.getDeviationImage(deviationImage);
 		detector.getBackgroundImage(backgroundImage);
@@ -81,7 +71,7 @@ int project_demo(int argc, char* argv[])
 		}
 		else if (key == ' ')
 		{
-			detector.needToInit = true;
+			detector.setNeedToInit(true);
 			continue;
 		}
 	}

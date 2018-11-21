@@ -99,31 +99,36 @@ class corner_detector_fast : public cv::Feature2D
 class Detector
 {
 public:
-	Detector();
-	std::vector<cv::Point2f> findCorners(cv::Mat grayFrame, int maxCornersNum);
+	Detector(float refreshRate, float deviationFactor, float targetsFactor);
+	void setNeedToInit(bool needToInit);
+	void process(const cv::Mat &frame);
+	void getDeviationImage(cv::Mat &deviationImage);
+	void getBackgroundImage(cv::Mat &backgroundImage);
+	void getBinaryImage(cv::Mat &binaryImage);
+private:
 	void calcOpticalFlow(cv::Mat prevGrayFrame, cv::Mat currentGrayFrame, std::vector<cv::Point2f> prevPoints, std::vector<cv::Point2f>& currentPoints, std::vector<uchar>& status);
 	void translateFrame(cv::Mat inputFrame, cv::Mat& outputFrame, cv::Point2f offset);
 	cv::Mat subPixTranslateFrameOpenCV(cv::Mat inputFrame, cv::Point2f subPixOffset);
 	float findMedian(std::vector<float> value);
 	cv::Point2f findOffsetMedian(std::vector<cv::Point2f> prevPoints, std::vector<cv::Point2f> currentPoints);
-	void makeInitialFrame(cv::Mat prevGrayFrame, std::vector<cv::Point2f>& prevPoints);
+	void init();
 	cv::Point2f calcFrameOffset(cv::Mat& currentGrayFrame);
 	void translateAverageBackAndDeviationImg(cv::Mat currentFrame, cv::Point2f currentOffset);
 	void calcFrameStaticPartMask(cv::Mat currentFrame, float deviationFactor);
 	void calcAverageBackAndDeviationImg(cv::Mat currentFrame, float refreshRate);
 	int getBackgroundBoundOpenCV(cv::Mat frame);
 	void calcTargetsBinaryFrame(cv::Mat currentFrame, float targetsFactor);
-	
-	void getDeviationImage(cv::Mat &deviationImage);
-	void getBackgroundImage(cv::Mat &backgroundImage);
-	void getBinaryImage(cv::Mat &binaryImage);
-	
-	cv::Mat frameStaticPartMask, averageBackImg, deviationImg, targetsBinaryFrame;
-	bool needToInit;
-	float deviationImgFillValue;
 
-	cv::Mat prevGrayFrame, currentDeviationImg;
-	std::vector<cv::Point2f> prevPoints, currentPoints;
+	float m_refreshRate;
+	float m_deviationFactor;
+	float m_targetsFactor;
+
+	cv::Mat m_frameStaticPartMask, m_averageBackImg, m_deviationImg, m_targetsBinaryFrame;
+	bool m_needToInit;
+	float m_deviationImgFillValue;
+
+	cv::Mat m_prevGrayFrame, m_currentDeviationImg;
+	std::vector<cv::Point2f> m_prevPoints, m_currentPoints;
 };
 } // namespace cvlib
 

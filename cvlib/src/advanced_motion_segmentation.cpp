@@ -8,26 +8,16 @@ namespace cvlib
 	const int MAX_CORNERS_NUM = 64;
 	const int MIN_CORNERS_NUM = 16;
 
-	Detector::Detector()
+	Detector::Detector(float refreshRate, float deviationFactor, float targetsFactor)
 	{
-		needToInit = true;
+		m_needToInit = true;
+
+		m_refreshRate = refreshRate;
+		m_deviationFactor = deviationFactor;
+		m_targetsFactor = targetsFactor;
+		m_deviationImgFillValue = 256.0f / targetsFactor;
 	}
 	
-	std::vector<cv::Point2f> Detector::findCorners(cv::Mat grayFrame, int maxCornersNum)
-	{
-		// Shi-Tomasi Corner Detector
-		double qualityLevel = 0.25;//0.01; // Мера "качества" особых точек
-		double minDistance = 10; // Минимальное расстояние между особыми точками (в евклидовой мере)
-		int blockSize = 3; // Размер блока для вычисления производной ковариационной матрицы в окрестности каждого пикселя
-		bool useHarrisDetector = false; // Параметр, указывающий, следует ли использовать детектор Харриса
-		double k = 0.04; // Эмпирическая константа для подсчета собственных значений ([0.04; 0.06]) (для детектора Харриса)
-
-		std::vector<cv::Point2f> corners;
-		goodFeaturesToTrack(grayFrame, corners, maxCornersNum, qualityLevel, minDistance, cv::Mat(), blockSize, useHarrisDetector, k);
-
-		return corners;
-	}
-
 	void Detector::calcOpticalFlow(cv::Mat prevGrayFrame, cv::Mat currentGrayFrame, std::vector<cv::Point2f> prevPoints, std::vector<cv::Point2f>& currentPoints, std::vector<uchar>& status)
 	{
 		std::vector<float> err; // Вектор погрешностей. Тип меры погрешности может быть установлен соответсвующим флагом
@@ -177,50 +167,51 @@ namespace cvlib
 		}
 	}
 
-	void Detector::makeInitialFrame(cv::Mat prevGrayFrame, std::vector<cv::Point2f>& prevPoints)
+	void Detector::init()
 	{
-		prevGrayFrame.convertTo(averageBackImg, CV_32F);
+		m_prevGrayFrame.convertTo(m_averageBackImg, CV_32F);
 
-		deviationImg = cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_32F, cv::Scalar(deviationImgFillValue));
-
-		prevPoints = findCorners(prevGrayFrame, MAX_CORNERS_NUM);
+		m_deviationImg = cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_32F, cv::Scalar(m_deviationImgFillValue));
+	
+		m_prevPoints.clear();
+		goodFeaturesToTrack(m_prevGrayFrame, m_prevPoints, MAX_CORNERS_NUM, 0.25, 10, cv::Mat(), 3, false, 0.04);
 	}
 
 	cv::Point2f Detector::calcFrameOffset(cv::Mat& currentGrayFrame)
 	{
-		std::vector<uchar> status;
-		cv::Point2f frameOffset;
-
-		if (needToInit)
+		if (m_needToInit)
 		{
-			currentGrayFrame.copyTo(prevGrayFrame);
-			makeInitialFrame(prevGrayFrame, prevPoints);
-			needToInit = false;
+			currentGrayFrame.copyTo(m_prevGrayFrame);
+			init();
+			m_needToInit = false;
 			return cv::Point2f(0, 0);
 		}
 
-		calcOpticalFlow(prevGrayFrame, currentGrayFrame, prevPoints, currentPoints, status);
+		std::vector<uchar> status;
+		cv::Point2f frameOffset;
+
+		calcOpticalFlow(m_prevGrayFrame, currentGrayFrame, m_prevPoints, m_currentPoints, status);
 
 		size_t k = 0;
-		for (size_t i = 0; i < currentPoints.size(); i++)
+		for (size_t i = 0; i < m_currentPoints.size(); i++)
 		{
 			if (status[i])
 			{
-				currentPoints[k] = currentPoints[i];
-				prevPoints[k] = prevPoints[i];
+				m_currentPoints[k] = m_currentPoints[i];
+				m_prevPoints[k] = m_prevPoints[i];
 				k++;
 			}
 		}
-		currentPoints.resize(k);
-		prevPoints.resize(k);
+		m_currentPoints.resize(k);
+		m_prevPoints.resize(k);
 
-		if (currentPoints.size() < MIN_CORNERS_NUM)
-			needToInit = true;
+		if (m_currentPoints.size() < MIN_CORNERS_NUM)
+			m_needToInit = true;
 
-		frameOffset = findOffsetMedian(prevPoints, currentPoints);
+		frameOffset = findOffsetMedian(m_prevPoints, m_currentPoints);
 
-		std::swap(prevPoints, currentPoints);
-		cv::swap(prevGrayFrame, currentGrayFrame);
+		std::swap(m_prevPoints, m_currentPoints);
+		cv::swap(m_prevGrayFrame, currentGrayFrame);
 
 		return frameOffset;
 	}
@@ -230,36 +221,36 @@ namespace cvlib
 		cv::Mat translatedAverageBackImg, translatedDeviationImg;
 
 		currentFrame.copyTo(translatedAverageBackImg);
-		translateFrame(averageBackImg, translatedAverageBackImg, currentOffset);
+		translateFrame(m_averageBackImg, translatedAverageBackImg, currentOffset);
 
-		translatedDeviationImg = cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_32F, cv::Scalar(deviationImgFillValue));
-		translateFrame(deviationImg, translatedDeviationImg, currentOffset);
+		translatedDeviationImg = cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_32F, cv::Scalar(m_deviationImgFillValue));
+		translateFrame(m_deviationImg, translatedDeviationImg, currentOffset);
 
-		translatedAverageBackImg.copyTo(averageBackImg);
-		translatedDeviationImg.copyTo(deviationImg);
+		translatedAverageBackImg.copyTo(m_averageBackImg);
+		translatedDeviationImg.copyTo(m_deviationImg);
 	}
 
 	void Detector::calcFrameStaticPartMask(cv::Mat currentFrame, float deviationFactor)
 	{
-		currentDeviationImg = abs(currentFrame - averageBackImg);
+		m_currentDeviationImg = abs(currentFrame - m_averageBackImg);
 
-		frameStaticPartMask = deviationFactor * deviationImg - currentDeviationImg;
-		frameStaticPartMask.convertTo(frameStaticPartMask, CV_8U);
+		m_frameStaticPartMask = deviationFactor * m_deviationImg - m_currentDeviationImg;
+		m_frameStaticPartMask.convertTo(m_frameStaticPartMask, CV_8U);
 	}
 
 	void Detector::calcAverageBackAndDeviationImg(cv::Mat currentFrame, float refreshRate)
 	{
 		cv::Mat currentDeviationImgStaticPart, currentFrameStaticPart;
 
-		averageBackImg.copyTo(currentFrameStaticPart);
-		currentFrame.copyTo(currentFrameStaticPart, frameStaticPartMask);
+		m_averageBackImg.copyTo(currentFrameStaticPart);
+		currentFrame.copyTo(currentFrameStaticPart, m_frameStaticPartMask);
 
-		averageBackImg = (1 - refreshRate) * averageBackImg + refreshRate * currentFrameStaticPart;
+		m_averageBackImg = (1 - refreshRate) * m_averageBackImg + refreshRate * currentFrameStaticPart;
 
-		deviationImg.copyTo(currentDeviationImgStaticPart);
-		currentDeviationImg.copyTo(currentDeviationImgStaticPart, frameStaticPartMask);
+		m_deviationImg.copyTo(currentDeviationImgStaticPart);
+		m_currentDeviationImg.copyTo(currentDeviationImgStaticPart, m_frameStaticPartMask);
 
-		deviationImg = (1 - refreshRate) * deviationImg + refreshRate * currentDeviationImgStaticPart;
+		m_deviationImg = (1 - refreshRate) * m_deviationImg + refreshRate * currentDeviationImgStaticPart;
 	}
 
 	int Detector::getBackgroundBoundOpenCV(cv::Mat frame)
@@ -300,37 +291,53 @@ namespace cvlib
 	{
 		cv::Mat backgroundBoundMask = cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_8U, cv::Scalar(255));
 
-		currentDeviationImg = abs(currentFrame - averageBackImg);
+		m_currentDeviationImg = abs(currentFrame - m_averageBackImg);
 
-		frameStaticPartMask = targetsFactor * deviationImg - currentDeviationImg;
-		frameStaticPartMask.convertTo(frameStaticPartMask, CV_8U);
+		m_frameStaticPartMask = targetsFactor * m_deviationImg - m_currentDeviationImg;
+		m_frameStaticPartMask.convertTo(m_frameStaticPartMask, CV_8U);
 
-		currentDeviationImg.convertTo(currentDeviationImg, CV_8U);
-		int backgroundBound = getBackgroundBoundOpenCV(currentDeviationImg);
+		m_currentDeviationImg.convertTo(m_currentDeviationImg, CV_8U);
+		int backgroundBound = getBackgroundBoundOpenCV(m_currentDeviationImg);
 
-		cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_8U, cv::Scalar(0)).copyTo(backgroundBoundMask, currentDeviationImg - backgroundBound);
-		cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_8U, cv::Scalar(255)).copyTo(frameStaticPartMask, backgroundBoundMask);
+		cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_8U, cv::Scalar(0)).copyTo(backgroundBoundMask, m_currentDeviationImg - backgroundBound);
+		cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_8U, cv::Scalar(255)).copyTo(m_frameStaticPartMask, backgroundBoundMask);
 
-		targetsBinaryFrame.setTo(cv::Scalar(255));
-		cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_8U, cv::Scalar(0)).copyTo(targetsBinaryFrame, frameStaticPartMask);
+		m_targetsBinaryFrame.setTo(cv::Scalar(255));
+		cv::Mat(CAP_FRAME_HEIGHT, CAP_FRAME_WIDTH, CV_8U, cv::Scalar(0)).copyTo(m_targetsBinaryFrame, m_frameStaticPartMask);
+	}
+
+	void Detector::setNeedToInit(bool needToInit)
+	{
+		m_needToInit = needToInit;
+	}
+
+	void Detector::process(const cv::Mat &frame)
+	{
+		cv::Mat grayFrame8U, grayFrame32F;
+
+		cv::cvtColor(frame, grayFrame8U, CV_RGB2GRAY);
+		grayFrame8U.convertTo(grayFrame32F, CV_32F);
+
+		cv::Point2f currentOffset = calcFrameOffset(grayFrame8U);
+		translateAverageBackAndDeviationImg(grayFrame32F, currentOffset);
+		calcFrameStaticPartMask(grayFrame32F, m_deviationFactor);
+		calcAverageBackAndDeviationImg(grayFrame32F, m_refreshRate);
+		calcTargetsBinaryFrame(grayFrame32F, m_targetsFactor);
 	}
 
 	void Detector::getDeviationImage(cv::Mat &deviationImage)
 	{
-		deviationImage = this->deviationImg * 20;
+		deviationImage = m_deviationImg * 20;
 		deviationImage.convertTo(deviationImage, CV_8U);
 	}
 
 	void Detector::getBackgroundImage(cv::Mat &backgroundImage)
 	{
-		averageBackImg.convertTo(backgroundImage, CV_8U);
+		m_averageBackImg.convertTo(backgroundImage, CV_8U);
 	}
 
 	void Detector::getBinaryImage(cv::Mat &binaryImage)
 	{
-		targetsBinaryFrame.assignTo(binaryImage);
+		m_targetsBinaryFrame.assignTo(binaryImage);
 	}
-
-
-	
 }
