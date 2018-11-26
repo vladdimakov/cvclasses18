@@ -6,12 +6,18 @@
 
 #include "utils.hpp"
 #include <cvlib.hpp>
+#include <cstring>
 
 int project_demo(int argc, char* argv[])
 {
     const cv::String keys = "{video          |      | video file           }";
     cv::CommandLineParser parser(argc, argv, keys);
     auto videoFile = parser.get<cv::String>("video");
+	// cv::CommandLineParser parser(argc, argv, "{@input|0|}");
+	// std::string videoFile = parser.get<std::string>("@input");
+	std::ofstream out(videoFile + ".txt");
+	if (!out.is_open())
+		return -1;
 
     const bool showAuxImages = false;
     const auto origin_wnd = "Origin";
@@ -44,6 +50,11 @@ int project_demo(int argc, char* argv[])
 
     cv::Mat frame, deviationImage, backgroundImage, binaryImage;
 
+	std::vector<cvlib::Object> objects;
+	std::vector<cvlib::Object> found_objects;
+	int number = 0;
+	int prev = 0;
+
     cv::VideoCapture cap(videoFile);
     if (!cap.isOpened())
         return -1;
@@ -58,6 +69,20 @@ int project_demo(int argc, char* argv[])
 
         segmenter.process(frame);
         segmenter.getBinaryImage(binaryImage);
+
+		prev = number;
+		cvlib::Count(binaryImage, objects, found_objects, number);
+		char buffer[25];
+		sprintf_s(buffer, "%d", number);
+		cv::putText(frame, buffer, cv::Point(15, 60), cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(0, 255, 0), 5, CV_AA);
+		if(prev < number) out << cap.get(cv::CAP_PROP_POS_MSEC) << "\r\n";
+		for (int i = 0; i < objects.size(); ++i)
+		{
+			{
+				cv::rectangle(frame, objects[i].boundingRect, cv::Scalar(0, 255, 0), 2);
+				cv::circle(frame, objects[i].centerPosition, 3, cv::Scalar(0, 0, 255), -1);
+			}
+		}
 
         cv::line(frame, cv::Point(frame.cols / 2, 200), cv::Point(frame.cols / 2, frame.rows - 200), cv::Scalar(0, 0, 255), 2, 8);
         utils::put_fps_text(frame, fps);
