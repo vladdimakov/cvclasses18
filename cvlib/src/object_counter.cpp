@@ -17,7 +17,6 @@ Object::Object(std::vector<cv::Point> _contour)
 
 	centerPosition.x = (boundingRect.x + boundingRect.x + boundingRect.width) / 2;
 	centerPosition.y = (boundingRect.y + boundingRect.y + boundingRect.height) / 2;
-
 }
 
 void Count(cv::Mat im_, std::vector<Object>& objects, std::vector<Object>& found_objects, int& number_)
@@ -60,7 +59,7 @@ void Count(cv::Mat im_, std::vector<Object>& objects, std::vector<Object>& found
 				if (flag)
 					break;
 			}
-			if (flag == 0 && new_obj.boundingRect.area() > 600 && new_obj.centerPosition.x < (im.cols / 2))
+			if (flag == 0 && new_obj.boundingRect.height > 50 && new_obj.boundingRect.width > 100 && new_obj.centerPosition.x < (im.cols / 2))
 				found_objects.push_back(new_obj);
 		}
 	}
@@ -70,7 +69,10 @@ void Count(cv::Mat im_, std::vector<Object>& objects, std::vector<Object>& found
 	{
 		if (objects[i].centerPosition.x >= (im.cols / 2))
 		{
-			number_++;
+			/*if (objects[i].boundingRect.height > 150)		// при "150" 3 из 4 - распознано, 1 - ложно распознано (на ~100 машинах)
+				number_ += 2;
+			else*/
+				number_++;
 			printf(" %d \n", number_);
 			objects.erase(objects.begin() + i);
 		}

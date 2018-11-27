@@ -13,8 +13,8 @@ int project_demo(int argc, char* argv[])
     const cv::String keys = "{video          |      | video file           }";
     cv::CommandLineParser parser(argc, argv, keys);
     auto videoFile = parser.get<cv::String>("video");
-	// cv::CommandLineParser parser(argc, argv, "{@input|0|}");
-	// std::string videoFile = parser.get<std::string>("@input");
+	// cv::CommandLineParser parser(argc, argv, "{@input|0|}");    // так можно просто путь к видео писать
+	// std::string videoFile = parser.get<std::string>("@input");  // например, *.exe video.mp4
 	std::ofstream out(videoFile + ".txt");
 	if (!out.is_open())
 		return -1;
@@ -75,7 +75,14 @@ int project_demo(int argc, char* argv[])
 		char buffer[25];
 		sprintf_s(buffer, "%d", number);
 		cv::putText(frame, buffer, cv::Point(15, 60), cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(0, 255, 0), 5, CV_AA);
-		if(prev < number) out << cap.get(cv::CAP_PROP_POS_MSEC) << "\r\n";
+		if (prev < number) out << cap.get(cv::CAP_PROP_POS_MSEC) << "\r\n";
+		/*
+		if ((prev + 1) < number)
+		{
+			out << cap.get(cv::CAP_PROP_POS_MSEC) << "\r\n";
+			printf("\n\n");
+		}
+		*/
 		for (int i = 0; i < objects.size(); ++i)
 		{
 			{
@@ -83,7 +90,6 @@ int project_demo(int argc, char* argv[])
 				cv::circle(frame, objects[i].centerPosition, 3, cv::Scalar(0, 0, 255), -1);
 			}
 		}
-
         cv::line(frame, cv::Point(frame.cols / 2, 200), cv::Point(frame.cols / 2, frame.rows - 200), cv::Scalar(0, 0, 255), 2, 8);
         utils::put_fps_text(frame, fps);
 
@@ -116,7 +122,7 @@ int project_demo(int argc, char* argv[])
     if (showAuxImages)
     {
         cv::destroyWindow(deviation_image_wnd);
-        cv::destroyWindow(background_image_wnd);
+		cv::destroyWindow(background_image_wnd);
     }
 
     return 0;
