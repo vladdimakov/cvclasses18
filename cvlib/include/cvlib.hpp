@@ -150,11 +150,12 @@ public:
 	std::vector<cv::Point> contour;
 	cv::Rect boundingRect;
 	cv::Point centerPosition;
+	cv::Point Position;
 
 	Object(std::vector<cv::Point> _contour);
 };
 
-void Count(cv::Mat Inp_image, std::vector<cvlib::Object>& objects_, std::vector<cvlib::Object>& found_objects, int& Number_);
+void Count(cv::Mat Inp_image, std::vector<cvlib::Object>& objects_, int& Number_);
 } // namespace cvlib
 
 #endif // __CVLIB_HPP__
