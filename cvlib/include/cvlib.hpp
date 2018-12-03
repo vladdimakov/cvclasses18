@@ -106,10 +106,7 @@ class descriptor_matcher : public cv::DescriptorMatcher
     }
 
     /// \brief setup ratio threshold for SSD filtering
-    void set_ratio(float r)
-    {
-        ratio_ = r;
-    }
+    void set_ratio(float r);
 
     protected:
     /// \see cv::DescriptorMatcher::knnMatchImpl
@@ -121,21 +118,10 @@ class descriptor_matcher : public cv::DescriptorMatcher
                                  cv::InputArrayOfArrays masks = cv::noArray(), bool compactResult = false) override;
 
     /// \see cv::DescriptorMatcher::isMaskSupported
-    virtual bool isMaskSupported() const override
-    {
-        return false;
-    }
+    virtual bool isMaskSupported() const override;
 
     /// \see cv::DescriptorMatcher::isMaskSupported
-    virtual cv::Ptr<cv::DescriptorMatcher> clone(bool emptyTrainData = false) const override
-    {
-        cv::Ptr<cv::DescriptorMatcher> copy = new descriptor_matcher(*this);
-        if (emptyTrainData)
-        {
-            copy->clear();
-        }
-        return copy;
-    }
+    virtual cv::Ptr<cv::DescriptorMatcher> clone(bool emptyTrainData = false) const override;
 
     private:
     float ratio_;

@@ -8,6 +8,11 @@
 
 namespace cvlib
 {
+void descriptor_matcher::set_ratio(float r)
+{
+    ratio_ = r;
+}
+
 void descriptor_matcher::knnMatchImpl(cv::InputArray queryDescriptors, std::vector<std::vector<cv::DMatch>>& matches, int k /*unhandled*/,
                                       cv::InputArrayOfArrays masks /*unhandled*/, bool compactResult /*unhandled*/)
 {
@@ -27,10 +32,25 @@ void descriptor_matcher::knnMatchImpl(cv::InputArray queryDescriptors, std::vect
     }
 }
 
-void descriptor_matcher::radiusMatchImpl(cv::InputArray queryDescriptors, std::vector<std::vector<cv::DMatch>>& matches, float /*maxDistance*/,
+void descriptor_matcher::radiusMatchImpl(cv::InputArray queryDescriptors, std::vector<std::vector<cv::DMatch>>& matches, float maxDistance,
                                          cv::InputArrayOfArrays masks /*unhandled*/, bool compactResult /*unhandled*/)
 {
     // \todo implement matching with "maxDistance"
     knnMatchImpl(queryDescriptors, matches, 1, masks, compactResult);
+}
+
+bool descriptor_matcher::isMaskSupported() const
+{
+    return false;
+}
+
+cv::Ptr<cv::DescriptorMatcher> descriptor_matcher::clone(bool emptyTrainData) const
+{
+    cv::Ptr<cv::DescriptorMatcher> copy = new descriptor_matcher(*this);
+    if (emptyTrainData)
+    {
+        copy->clear();
+    }
+    return copy;
 }
 } // namespace cvlib
