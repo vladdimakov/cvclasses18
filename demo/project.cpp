@@ -5,16 +5,15 @@
  */
 
 #include "utils.hpp"
-#include <cvlib.hpp>
 #include <cstring>
+#include <cvlib.hpp>
 
 int project_demo(int argc, char* argv[])
 {
     const cv::String keys = "{video          |      | video file           }";
     cv::CommandLineParser parser(argc, argv, keys);
     auto videoFile = parser.get<cv::String>("video");
-    // cv::CommandLineParser parser(argc, argv, "{@input|0|}");
-    // std::string videoFile = parser.get<std::string>("@input");
+
     std::ofstream out(videoFile + ".txt");
     if (!out.is_open())
         return -1;
@@ -41,9 +40,9 @@ int project_demo(int argc, char* argv[])
         cv::resizeWindow(background_image_wnd, wnd_width, wnd_height);
     }
 
-    float refreshRate = 0.02f; // TODO
-    float deviationFactor = 5.5f; // TODO
-    float targetsFactor = 15.0f; // TODO
+    float refreshRate = 0.02f;
+    float deviationFactor = 5.5f;
+    float targetsFactor = 15.0f;
     int maxCornersNum = 64;
     int minCornersNum = 16;
     cvlib::AdvancedMotionSegmentation segmenter(refreshRate, deviationFactor, targetsFactor, maxCornersNum, minCornersNum);
@@ -71,24 +70,18 @@ int project_demo(int argc, char* argv[])
 
         prev = number;
         cvlib::Count(binaryImage, objects, number);
-        char buffer[25];
-        sprintf_s(buffer, "%d", number);
-        cv::putText(frame, buffer, cv::Point(15, 60), cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(0, 255, 0), 5, CV_AA);
-        if (prev < number) out << cap.get(cv::CAP_PROP_POS_MSEC) << "\r\n";
-        /*
-        if ((prev + 1) < number)
+        cv::putText(frame, std::to_string(number), cv::Point(15, 60), cv::FONT_HERSHEY_PLAIN, 5, cv::Scalar(0, 255, 0), 5, CV_AA);
+
+        if (prev < number)
         {
-        out << cap.get(cv::CAP_PROP_POS_MSEC) << "\r\n";
-        printf("\n\n");
+            out << cap.get(cv::CAP_PROP_POS_MSEC) << "\r\n";
         }
-        */
+
         for (int i = 0; i < objects.size(); ++i)
         {
-            {
-                cv::rectangle(frame, objects[i].boundingRect, cv::Scalar(0, 255, 0), 2);
-                cv::circle(frame, objects[i].centerPosition, 3, cv::Scalar(0, 0, 255), -1);
-            }
+            cv::rectangle(frame, objects[i].boundingRect, cv::Scalar(0, 255, 0), 2);
         }
+
         cv::line(frame, cv::Point(frame.cols / 2, 200), cv::Point(frame.cols / 2, frame.rows - 200), cv::Scalar(0, 0, 255), 2, 8);
         utils::put_fps_text(frame, fps);
 
@@ -114,6 +107,8 @@ int project_demo(int argc, char* argv[])
             continue;
         }
     }
+
+    out.close();
 
     cv::destroyWindow(origin_wnd);
     cv::destroyWindow(binary_image_wnd);
