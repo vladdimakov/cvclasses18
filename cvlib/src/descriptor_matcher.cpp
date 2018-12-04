@@ -13,25 +13,25 @@ void descriptor_matcher::set_ratio(float r)
     ratio_ = r;
 }
 
-void descriptor_matcher::erase_matches_by_ratio(std::vector<cv::DMatch> &matches)
+void descriptor_matcher::erase_matches_by_ratio(std::vector<cv::DMatch>& matches)
 {
-	std::vector<bool> needToErase(matches.size());
-	for (int i = 1; i < matches.size(); i++)
-	{
-		if (matches[i - 1].distance / matches[i].distance <= ratio_)
-		{
-			needToErase[i - 1] = true;
-			needToErase[i] = true;
-		}
-	}
+    std::vector<bool> needToErase(matches.size(), false);
+    for (int i = 1; i < matches.size(); i++)
+    {
+        if (matches[i - 1].distance / matches[i].distance <= ratio_)
+        {
+            needToErase[i - 1] = true;
+            needToErase[i] = true;
+        }
+    }
 
-	auto it = matches.begin();
-	int i = 0;
-	while (it != matches.end())
-	{
-		it = (needToErase[i]) ? matches.erase(it) : it + 1;
-		i++;
-	}
+    auto it = matches.begin();
+    int i = 0;
+    while (it != matches.end())
+    {
+        it = (needToErase[i]) ? matches.erase(it) : it + 1;
+        i++;
+    }
 }
 
 void descriptor_matcher::knnMatchImpl(cv::InputArray queryDescriptors, std::vector<std::vector<cv::DMatch>>& matches, int k /*unhandled*/,
@@ -43,9 +43,9 @@ void descriptor_matcher::knnMatchImpl(cv::InputArray queryDescriptors, std::vect
         {
             std::sort(curr_matches.begin(), curr_matches.end(),
                       [](const cv::DMatch& obj1, const cv::DMatch& obj2) -> bool { return obj1.distance >= obj2.distance; });
-		
-			erase_matches_by_ratio(curr_matches);
-		}
+
+            erase_matches_by_ratio(curr_matches);
+        }
     }
 }
 

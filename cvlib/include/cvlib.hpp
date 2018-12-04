@@ -124,7 +124,7 @@ class descriptor_matcher : public cv::DescriptorMatcher
     virtual cv::Ptr<cv::DescriptorMatcher> clone(bool emptyTrainData = false) const override;
 
     private:
-		void erase_matches_by_ratio(std::vector<cv::DMatch>& matches);
+    void erase_matches_by_ratio(std::vector<cv::DMatch>& matches);
     float ratio_;
 };
 
