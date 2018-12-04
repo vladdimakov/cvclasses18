@@ -131,7 +131,69 @@ class descriptor_matcher : public cv::DescriptorMatcher
 /// \brief Stitcher for merging images into big one
 class Stitcher
 {
-    /// \todo design and implement
+public:
+	void makeStitchedImg(const cv::Mat &testImg, const std::vector<cv::KeyPoint> &testCorners, const cv::Mat &refImg, const std::vector<cv::KeyPoint> &refCorners, const std::vector<std::vector<cv::DMatch>> &pairs, cv::Mat &stitchedImg)
+	{
+		m_isStitched = false;
+
+		calcHomography(testCorners, refCorners, pairs);
+
+		double dx, dy;
+		if (!m_homography.empty())
+		{
+			dx = m_homography.at<double>(0, 2);
+			dy = m_homography.at<double>(1, 2);
+
+			if (dx > 0 && dy > 0)
+			{
+				cv::Size size = refImg.size();
+				size.width += dx;
+				size.height += dy;
+
+				cv::warpPerspective(refImg, m_stitchedImg, m_homography, size);
+				testImg.copyTo(m_stitchedImg.rowRange(0, testImg.rows).colRange(0, testImg.cols));
+				m_isStitched = true;
+			}
+		}
+
+		if (m_isStitched)
+		{
+			m_stitchedImg.copyTo(stitchedImg);
+		}
+		else
+		{
+			refImg.copyTo(stitchedImg);
+		}
+	}
+
+	void stitch(const std::vector<cv::KeyPoint> &testCorners, std::vector<cv::KeyPoint> &refCorners, const cv::Mat &testDescriptors, cv::Mat &refDescriptors, cv::Mat &refImg)
+	{
+		if (m_isStitched)
+		{
+			m_stitchedImg.copyTo(refImg);
+		}
+	}
+private:
+	void calcHomography(const std::vector<cv::KeyPoint> &testCorners, const std::vector<cv::KeyPoint> &refCorners, const std::vector<std::vector<cv::DMatch>> &pairs)
+	{
+		std::vector<cv::Point2f> refPoints, testPoints;
+		for (int i = 0; i < pairs.size(); i++)
+		{
+			if (pairs[i].size() > 0)
+			{
+				refPoints.push_back(refCorners[pairs[i][0].trainIdx].pt);
+				testPoints.push_back(testCorners[i].pt);
+			}
+		}
+
+		if (refPoints.size() != 0)
+		{
+			m_homography = cv::findHomography(refPoints, testPoints, CV_RANSAC);
+		}
+	}
+	cv::Mat m_homography;
+	bool m_isStitched;
+	cv::Mat m_stitchedImg;
 };
 
 class AdvancedMotionSegmentation
