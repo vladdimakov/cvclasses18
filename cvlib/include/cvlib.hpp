@@ -140,84 +140,47 @@ public:
 
 		if (!m_homography.empty())
 		{
-			m_dx = m_homography.at<double>(0, 2);
-			m_dy = m_homography.at<double>(1, 2);
+			cv::Size size = refImg.size();
 
-			if (m_dx > 0 && m_dy > 0)
+			if (m_dx >= 0 && m_dy >= 0)
 			{
-				cv::Size size = refImg.size();
 				size.width += m_dx;
 				size.height += m_dy;
 
 				cv::warpPerspective(refImg, m_stitchedImg, m_homography, size);
 				testImg.copyTo(m_stitchedImg.rowRange(0, testImg.rows).colRange(0, testImg.cols));
+
 				m_isStitched = true;
 			}
-			else if (m_dx <= 0 && m_dy <= 0)
-			{
-				cv::Size size = refImg.size();
+			else if (m_dx < 0 && m_dy < 0)
+			{				
 				size.width -= m_dx;
 				size.height -= m_dy;
 
-				cv::warpPerspective(testImg, m_stitchedImg, m_homography.inv(), size);
+				cv::warpPerspective(testImg, m_stitchedImg, m_homography, size);
 				refImg.copyTo(m_stitchedImg.rowRange(0, refImg.rows).colRange(0, refImg.cols));
+
 				m_isStitched = true;
 			}
 		}
 
 		if (m_isStitched)
-		{
 			m_stitchedImg.copyTo(stitchedImg);
-		}
 		else
-		{
 			refImg.copyTo(stitchedImg);
-		}
 	}
 
-	void warpPerspective(const std::vector<cv::KeyPoint> &src, std::vector<cv::KeyPoint> &dst, const cv::Mat &M)
-	{
-		cv::KeyPoint kp;
-		cv::Mat_<double> P(3, 1);
-		for (int i = 0; i < src.size(); i++)
-		{
-			kp = src[i];
-
-			P(0, 0) = kp.pt.x;
-			P(1, 0) = kp.pt.y;
-			P(2, 0) = 1.0;
-
-			P = M * P;
-
-			kp.pt.x = P(0, 0) / P(2, 0);
-			kp.pt.y = P(1, 0) / P(2, 0);
-
-			dst.push_back(kp);
-		}
-	}
-
-	void stitch(const std::vector<cv::KeyPoint> &testCorners, std::vector<cv::KeyPoint> &refCorners, const cv::Mat &testDescriptors, cv::Mat &refDescriptors, cv::Mat &refImg)
+	void stitch(std::vector<cv::KeyPoint> testCorners, std::vector<cv::KeyPoint> &refCorners, const cv::Mat &testDescriptors, cv::Mat &refDescriptors, cv::Mat &refImg)
 	{
 		if (m_isStitched)
 		{
-			std::vector<cv::KeyPoint> refCornersTmp;
-
-			if (m_dx > 0 && m_dy > 0)
-			{
-				refCornersTmp = testCorners;
-				warpPerspective(refCorners, refCornersTmp, m_homography);
-				refCorners = refCornersTmp;
-
-				cv::vconcat(testDescriptors, refDescriptors, refDescriptors);				
-			}
-			else if (m_dx <= 0 && m_dy <= 0)
-			{
-				refCornersTmp = refCorners;
-				warpPerspective(testCorners, refCornersTmp, m_homography.inv());
-				refCorners = refCornersTmp;
-
-				cv::vconcat(refDescriptors, testDescriptors, refDescriptors);
-			}		
+			if (m_dx >= 0 && m_dy >= 0)
+				warpPerspective(refCorners);		
+			else if (m_dx < 0 && m_dy < 0)
+				warpPerspective(testCorners);		
+			
+			refCorners.insert(refCorners.end(), testCorners.begin(), testCorners.end());
+			cv::vconcat(refDescriptors, testDescriptors, refDescriptors);
 
 			m_stitchedImg.copyTo(refImg);
 		}
@@ -236,8 +199,31 @@ private:
 		}
 
 		if (refPoints.size() != 0)
-		{
 			m_homography = cv::findHomography(refPoints, testPoints, CV_RANSAC);
+
+		if (!m_homography.empty())
+		{
+			m_dx = m_homography.at<double>(0, 2);
+			m_dy = m_homography.at<double>(1, 2);
+
+			if (m_dx < 0 && m_dy < 0)
+				m_homography = m_homography.inv();
+		}
+	}
+
+	void warpPerspective(std::vector<cv::KeyPoint> &srcDdst)
+	{
+		cv::Mat_<double> P(3, 1);
+		for (int i = 0; i < srcDdst.size(); i++)
+		{
+			P(0, 0) = srcDdst[i].pt.x;
+			P(1, 0) = srcDdst[i].pt.y;
+			P(2, 0) = 1.0;
+
+			P = m_homography * P;
+
+			srcDdst[i].pt.x = P(0, 0) / P(2, 0);
+			srcDdst[i].pt.y = P(1, 0) / P(2, 0);
 		}
 	}
 
