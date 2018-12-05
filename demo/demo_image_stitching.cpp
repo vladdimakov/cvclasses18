@@ -75,6 +75,10 @@ int demo_image_stitching(int argc, char* argv[])
 		if (refCorners.empty())
 			continue;
 
+		cv::Mat ref;
+		cv::drawKeypoints(refImg, refCorners, ref);
+		cv::imshow("ref", ref);
+
 		detector->detectAndCompute(testImg, cv::Mat(), testCorners, testDescriptors);
 
 		matcher.radiusMatch(testDescriptors, refDescriptors, pairs, max_distance);
