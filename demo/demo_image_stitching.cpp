@@ -70,7 +70,7 @@ int demo_image_stitching(int argc, char* argv[])
             }
             else
             {
-                stitcher.stitch(testCorners, refCorners, testDescriptors, refDescriptors, refImg);
+                stitcher.stitch(testCorners, refCorners, testDescriptors, refDescriptors, pairs, refImg);
             }
         }
 

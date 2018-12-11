@@ -135,7 +135,7 @@ class Stitcher
     void makeStitchedImg(const cv::Mat& testImg, const std::vector<cv::KeyPoint>& testCorners, const cv::Mat& refImg,
                          const std::vector<cv::KeyPoint>& refCorners, const std::vector<std::vector<cv::DMatch>>& pairs, cv::Mat& stitchedImg);
     void stitch(std::vector<cv::KeyPoint> testCorners, std::vector<cv::KeyPoint>& refCorners, const cv::Mat& testDescriptors, cv::Mat& refDescriptors,
-                cv::Mat& refImg);
+                const std::vector<std::vector<cv::DMatch>>& pairs, cv::Mat& refImg);
 
     private:
     void calcHomography(const std::vector<cv::KeyPoint>& testCorners, const std::vector<cv::KeyPoint>& refCorners,

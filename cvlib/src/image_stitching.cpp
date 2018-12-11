@@ -18,14 +18,17 @@ void Stitcher::makeStitchedImg(const cv::Mat& testImg, const std::vector<cv::Key
     if (!m_homography.empty())
     {
         cv::Size size = refImg.size();
+        cv::Mat perspectiveImg;
 
         if (m_dx >= 0 && m_dy >= 0)
         {
             size.width += m_dx;
             size.height += m_dy;
 
-            cv::warpPerspective(refImg, m_stitchedImg, m_homography, size);
+            cv::warpPerspective(refImg, perspectiveImg, m_homography, size);
+            perspectiveImg.copyTo(m_stitchedImg);
             testImg.copyTo(m_stitchedImg.rowRange(0, testImg.rows).colRange(0, testImg.cols));
+            perspectiveImg.copyTo(m_stitchedImg, perspectiveImg != 0);
 
             m_isStitched = true;
         }
@@ -34,21 +37,25 @@ void Stitcher::makeStitchedImg(const cv::Mat& testImg, const std::vector<cv::Key
             size.width -= m_dx;
             size.height -= m_dy;
 
-            cv::warpPerspective(testImg, m_stitchedImg, m_homography, size);
+            cv::warpPerspective(testImg, perspectiveImg, m_homography, size);
+            perspectiveImg.copyTo(m_stitchedImg);
             refImg.copyTo(m_stitchedImg.rowRange(0, refImg.rows).colRange(0, refImg.cols));
+            perspectiveImg.copyTo(m_stitchedImg, perspectiveImg != 0);
 
             m_isStitched = true;
         }
     }
 
     if (m_isStitched)
+    {
         m_stitchedImg.copyTo(stitchedImg);
+    }
     else
         refImg.copyTo(stitchedImg);
 }
 
 void Stitcher::stitch(std::vector<cv::KeyPoint> testCorners, std::vector<cv::KeyPoint>& refCorners, const cv::Mat& testDescriptors,
-                      cv::Mat& refDescriptors, cv::Mat& refImg)
+                      cv::Mat& refDescriptors, const std::vector<std::vector<cv::DMatch>>& pairs, cv::Mat& refImg)
 {
     if (m_isStitched)
     {
@@ -57,8 +64,14 @@ void Stitcher::stitch(std::vector<cv::KeyPoint> testCorners, std::vector<cv::Key
         else if (m_dx < 0 && m_dy < 0)
             warpPerspective(testCorners);
 
-        refCorners.insert(refCorners.end(), testCorners.begin(), testCorners.end());
-        cv::vconcat(refDescriptors, testDescriptors, refDescriptors);
+        for (int i = 0; i < pairs.size(); i++)
+        {
+            if (pairs[i].size() == 0)
+            {
+                refCorners.push_back(testCorners[i]);
+                refDescriptors.push_back(testDescriptors.row(i));
+            }
+        }
 
         m_stitchedImg.copyTo(refImg);
     }
